@@ -1,5 +1,7 @@
 # Module B deployment
 
+For the same-origin UI image, Caddy routing, and browser verification, see [UI_DEPLOYMENT.md](UI_DEPLOYMENT.md).
+
 For the next user-operated service steps, see [CLOUD_SETUP.md](CLOUD_SETUP.md). Local Docker build, A+B end-to-end flow, and Caddy TLS/authentication have now been tested. Public-domain TLS and Atlas still require your services.
 
 No server, domain, Atlas cluster, paid service, or billing setting has been created or changed. These are operator-run instructions after infrastructure approval.

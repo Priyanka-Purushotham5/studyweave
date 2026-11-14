@@ -1,0 +1,5 @@
+# Add this as a separate site block after backing up and validating the existing
+# host Caddyfile. Keep the existing api.studynova.ink site block unchanged.
+studynova.ink {
+    reverse_proxy 127.0.0.1:3006
+}

@@ -6,5 +6,13 @@
     request_body {
         max_size 28MB
     }
-    reverse_proxy api:3000
+    @backend path /api/* /healthz /readyz
+    handle @backend {
+        reverse_proxy api:3000
+    }
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
 }

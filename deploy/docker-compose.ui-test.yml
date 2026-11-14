@@ -1,0 +1,16 @@
+# Combine with docker-compose.test.yml; UI_TEST_HASH is a test-only bcrypt hash.
+services:
+  caddy:
+    build:
+      context: ..
+      dockerfile: deploy/Web.Dockerfile
+    environment:
+      DOMAIN: http://localhost:3006
+      API_USERNAME: demo
+      API_PASSWORD_HASH: ${UI_TEST_HASH:?Set UI_TEST_HASH to a test-only bcrypt hash}
+    ports:
+      - "127.0.0.1:3006:3006"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - api
