@@ -1,0 +1,10 @@
+{
+  "answer": "The chain rule computes the derivative of a composite function by multiplying the derivatives of its parts.",
+  "citations": [
+    {
+      "resourceId": "r1",
+      "page": 2,
+      "quote": "compute the derivative of a composite function by multiplying the derivatives of its parts"
+    }
+  ]
+}

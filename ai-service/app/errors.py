@@ -4,6 +4,7 @@
 
 STATUS_BY_CODE = {
     "bad_request": 400,
+    "scanned_pdf": 422,
     "not_found": 404,
     "rate_limited": 429,
     "ai_unavailable": 503,

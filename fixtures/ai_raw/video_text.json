@@ -1,0 +1,15 @@
+{
+  "durationSec": 480,
+  "pages": [
+    {
+      "n": 1,
+      "text": "Today we look at how backpropagation works.",
+      "startSec": 0
+    },
+    {
+      "n": 2,
+      "text": "The chain rule is the key idea.",
+      "startSec": 240
+    }
+  ]
+}

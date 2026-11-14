@@ -1,0 +1,81 @@
+{
+  "subjects": [
+    {
+      "id": "s_nn",
+      "name": "Neural Networks",
+      "exams": [
+        {
+          "id": "e_midterm",
+          "name": "Midterm",
+          "date": "2026-12-15",
+          "modules": [
+            {
+              "id": "m_backprop",
+              "name": "Backpropagation",
+              "resources": [
+                {
+                  "id": "r1",
+                  "moduleId": "m_backprop",
+                  "type": "pdf",
+                  "title": "Lecture 7 - Backpropagation",
+                  "tag": "lecture",
+                  "extractionStatus": "done",
+                  "pages": [
+                    {
+                      "n": 1,
+                      "text": "Gradient descent is an iterative optimization algorithm that updates parameters in the direction of the negative gradient of the loss. The learning rate controls the size of each step. Activation functions such as ReLU introduce non-linearity so that a network can represent more than a linear map."
+                    },
+                    {
+                      "n": 2,
+                      "text": "The chain rule lets us compute the derivative of a composite function by multiplying the derivatives of its parts. If y = f(g(x)) then dy/dx = f'(g(x)) g'(x). Every layer of a neural network is a composite of simpler functions."
+                    },
+                    {
+                      "n": 3,
+                      "text": "Backpropagation applies the chain rule layer by layer from the output back to the input to compute the gradient of the loss with respect to every weight. The gradients it produces are then used by gradient descent to update the weights. Overfitting happens when a model memorizes the training data instead of learning general patterns."
+                    }
+                  ]
+                },
+                {
+                  "id": "r2",
+                  "moduleId": "m_backprop",
+                  "type": "web",
+                  "title": "Gradient descent explained",
+                  "url": "https://example.com/gradient-descent",
+                  "extractionStatus": "done",
+                  "pages": [
+                    {
+                      "n": 1,
+                      "text": "A short web article about gradient descent."
+                    }
+                  ]
+                },
+                {
+                  "id": "r3",
+                  "moduleId": "m_backprop",
+                  "type": "youtube",
+                  "title": "Backprop walkthrough (video)",
+                  "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                  "extractionStatus": "pending"
+                },
+                {
+                  "id": "r4",
+                  "moduleId": "m_backprop",
+                  "type": "pdf",
+                  "title": "Midterm 2025 (past paper)",
+                  "tag": "past_paper",
+                  "extractionStatus": "done",
+                  "pages": [
+                    {
+                      "n": 1,
+                      "text": "Question 1. Explain how backpropagation uses the chain rule. Question 2. State what the learning rate controls in gradient descent. Question 3. Why do networks need activation functions?"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

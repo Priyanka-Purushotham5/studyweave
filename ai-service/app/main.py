@@ -8,9 +8,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
 from .errors import ApiError
+from .endpoints import answer, concepts, edges, embed, glossary, papers, parse, questions, suggest, transcribe, video
 from .flagging import flag
 
 app = FastAPI(title="StudyWeave AI service")
+for _module in (parse, video, glossary, transcribe, concepts, embed, edges, questions, papers, answer, suggest):
+    app.include_router(_module.router)
 
 
 @app.exception_handler(ApiError)

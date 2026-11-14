@@ -1,0 +1,76 @@
+{
+  "questions": [
+    {
+      "text": "What does the chain rule let us compute?",
+      "options": [
+        "The derivative of a composite function",
+        "The integral of a polynomial",
+        "The mean of a dataset",
+        "The size of a gradient step"
+      ],
+      "answer": "A",
+      "difficulty": 1,
+      "citations": [
+        {
+          "resourceId": "r1",
+          "page": 2,
+          "quote": "compute the derivative of a composite function by multiplying the derivatives of its parts"
+        }
+      ]
+    },
+    {
+      "text": "Which rule does backpropagation apply layer by layer?",
+      "options": [
+        "Product rule",
+        "Chain rule",
+        "Power rule",
+        "Quotient rule"
+      ],
+      "answer": "B",
+      "difficulty": 2,
+      "citations": [
+        {
+          "resourceId": "r1",
+          "page": 3,
+          "quote": "applies the chain rule layer by layer from the output back to the input"
+        }
+      ]
+    },
+    {
+      "text": "Which statement about the chain rule is correct?",
+      "options": [
+        "It is unrelated to networks",
+        "It multiplies derivatives of composed functions",
+        "It adds derivatives",
+        "It divides derivatives"
+      ],
+      "answer": "B",
+      "difficulty": 1,
+      "citations": [
+        {
+          "resourceId": "r1",
+          "page": 2,
+          "quote": "compute the derivative of a composite function by multiplying the derivatives of its parts"
+        }
+      ]
+    },
+    {
+      "text": "This question cites text that is not in the pages.",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": "A",
+      "difficulty": 2,
+      "citations": [
+        {
+          "resourceId": "r1",
+          "page": 2,
+          "quote": "the chain rule was invented in 1950"
+        }
+      ]
+    }
+  ]
+}

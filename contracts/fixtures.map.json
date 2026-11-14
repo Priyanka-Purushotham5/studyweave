@@ -1,0 +1,11 @@
+{
+  "fixtures/tree.json": "Tree",
+  "fixtures/graph.json": "Graph",
+  "fixtures/questions.json": "QuestionsNextResponse",
+  "fixtures/trace.json": "Trace",
+  "fixtures/attempt_response.json": "AttemptResponse",
+  "fixtures/revision_plan.json": "RevisionPlan",
+  "fixtures/lecture.json": "Lecture",
+  "fixtures/glossary.json": "GlossaryResponse",
+  "fixtures/error_ai_unavailable.json": "Error"
+}

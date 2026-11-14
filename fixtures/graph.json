@@ -1,0 +1,104 @@
+{
+  "nodes": [
+    {
+      "id": "c_gradient_descent",
+      "moduleId": "m_backprop",
+      "name": "Gradient descent",
+      "definition": "An iterative algorithm that updates parameters along the negative gradient of the loss.",
+      "evidence": [
+        {
+          "resourceId": "r1",
+          "page": 1,
+          "quote": "updates parameters in the direction of the negative gradient of the loss"
+        }
+      ],
+      "examWeight": 2,
+      "readiness": 82
+    },
+    {
+      "id": "c_activation_functions",
+      "moduleId": "m_backprop",
+      "name": "Activation functions",
+      "definition": "Functions such as ReLU that add non-linearity to a network.",
+      "evidence": [
+        {
+          "resourceId": "r1",
+          "page": 1,
+          "quote": "introduce non-linearity so that a network can represent more than a linear map"
+        }
+      ],
+      "examWeight": 1,
+      "readiness": null
+    },
+    {
+      "id": "c_chain_rule",
+      "moduleId": "m_backprop",
+      "name": "Chain rule",
+      "definition": "The derivative of a composite function is the product of the derivatives of its parts.",
+      "evidence": [
+        {
+          "resourceId": "r1",
+          "page": 2,
+          "quote": "compute the derivative of a composite function by multiplying the derivatives of its parts"
+        }
+      ],
+      "examWeight": 3,
+      "readiness": 35
+    },
+    {
+      "id": "c_backpropagation",
+      "moduleId": "m_backprop",
+      "name": "Backpropagation",
+      "definition": "Applies the chain rule layer by layer to get the gradient of the loss for every weight.",
+      "evidence": [
+        {
+          "resourceId": "r1",
+          "page": 3,
+          "quote": "applies the chain rule layer by layer from the output back to the input"
+        }
+      ],
+      "examWeight": 3,
+      "readiness": 52
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_c_chain_rule__c_backpropagation",
+      "from": "c_chain_rule",
+      "to": "c_backpropagation",
+      "type": "prerequisite",
+      "reason": "Backpropagation applies the chain rule layer by layer.",
+      "evidence": {
+        "from": {
+          "resourceId": "r1",
+          "page": 2,
+          "quote": "compute the derivative of a composite function by multiplying the derivatives of its parts"
+        },
+        "to": {
+          "resourceId": "r1",
+          "page": 3,
+          "quote": "applies the chain rule layer by layer from the output back to the input"
+        }
+      }
+    },
+    {
+      "id": "e_c_gradient_descent__c_backpropagation",
+      "from": "c_gradient_descent",
+      "to": "c_backpropagation",
+      "type": "prerequisite",
+      "reason": "Gradient descent consumes the gradients that backpropagation produces.",
+      "evidence": {
+        "from": {
+          "resourceId": "r1",
+          "page": 1,
+          "quote": "updates parameters in the direction of the negative gradient of the loss"
+        },
+        "to": {
+          "resourceId": "r1",
+          "page": 3,
+          "quote": "used by gradient descent to update the weights"
+        }
+      }
+    }
+  ]
+}
