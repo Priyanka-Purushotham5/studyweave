@@ -41,14 +41,15 @@ export const schemas: Record<string, any> = {
     { questionId: id, conceptId: id, correct: { type: "boolean" } },
     ["questionId", "conceptId", "correct"],
   ),
-  ask: obj(
-    {
-      moduleId: id,
-      question: str,
-      kind: { enum: ["summary", "formula_sheet"] },
-    },
-    ["moduleId"],
-  ),
+  ask: {
+    oneOf: [
+      obj({ moduleId: id, question: str }, ["moduleId", "question"]),
+      obj({ moduleId: id, kind: { enum: ["summary", "formula_sheet"] } }, [
+        "moduleId",
+        "kind",
+      ]),
+    ],
+  },
   correction: {
     oneOf: [
       obj({ flagId: id }, ["flagId"]),

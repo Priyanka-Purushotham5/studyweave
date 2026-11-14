@@ -28,7 +28,7 @@ export class AtlasNeighborFinder implements NeighborFinder {
   ) {}
   async find(c: Concept, all: Concept[], k: number) {
     try {
-      return await this.db
+      const results = await this.db
         .collection<Concept>("concepts")
         .aggregate<Concept>([
           {
@@ -44,6 +44,7 @@ export class AtlasNeighborFinder implements NeighborFinder {
           { $project: { _id: 0 } },
         ])
         .toArray();
+      return results.length ? results : this.fallback.find(c, all, k);
     } catch {
       return this.fallback.find(c, all, k);
     }
@@ -65,4 +66,61 @@ export async function candidatePairs(
       }
     }
   return pairs;
+}
+
+/**
+ * NeighborFinder remains cross-module (B4). Curriculum relations within a module
+ * are a separate phase: source-order pairs, prioritizing explicit references in
+ * a dependent's definition or evidence page. No relation is asserted without A.
+ */
+export function curriculumPairs(
+  concepts: Concept[],
+  pages: import("../contracts/types.js").Page[],
+  k = 5,
+) {
+  const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+  const ordered = [...concepts].sort(
+    (a, b) =>
+      (a.evidence[0]?.page ?? 0) - (b.evidence[0]?.page ?? 0) ||
+      a.id.localeCompare(b.id),
+  );
+  const pairs: { a: Concept; b: Concept; reference: number }[] = [];
+  for (let i = 0; i < ordered.length; i++)
+    for (let j = i + 1; j < ordered.length; j++) {
+      const a = ordered[i],
+        b = ordered[j];
+      if (a.moduleId !== b.moduleId) continue;
+      const context = [
+        b.definition,
+        ...pages
+          .filter((p) =>
+            b.evidence.some(
+              (e) => e.resourceId === p.resourceId && e.page === p.n,
+            ),
+          )
+          .map((p) => p.text),
+      ].join(" ");
+      const forward =
+        (a.evidence[0]?.page ?? 0) < (b.evidence[0]?.page ?? 0) &&
+        normalize(context).includes(normalize(a.name));
+      pairs.push({ a, b, reference: Number(forward) });
+    }
+  const ranked = pairs.sort(
+    (x, y) =>
+      y.reference - x.reference ||
+      (y.b.evidence[0]?.page ?? 0) - (x.b.evidence[0]?.page ?? 0) ||
+      (y.a.evidence[0]?.page ?? 0) - (x.a.evidence[0]?.page ?? 0) ||
+      x.a.id.localeCompare(y.a.id) ||
+      x.b.id.localeCompare(y.b.id),
+  );
+  const counts = new Map<string, number>();
+  return ranked
+    .filter(({ a, b }) => {
+      if ((counts.get(a.id) ?? 0) >= k || (counts.get(b.id) ?? 0) >= k)
+        return false;
+      counts.set(a.id, (counts.get(a.id) ?? 0) + 1);
+      counts.set(b.id, (counts.get(b.id) ?? 0) + 1);
+      return true;
+    })
+    .map(({ a, b }) => ({ a, b }));
 }

@@ -1,3 +1,4 @@
+import { seedDemoHistory } from "./demoHistory.js";
 import { fixture } from "./sharedFixtures.js";
 import { hash } from "../ai/aiClient.js";
 import { publicResource } from "./public.js";
@@ -99,5 +100,6 @@ export async function seed(s: Store) {
   for (const [name, values] of Object.entries(rows))
     for (const row of values)
       if (!(await s.get(name, row.id))) await s.put(name, row);
+  await seedDemoHistory(s);
   return { ok: true };
 }

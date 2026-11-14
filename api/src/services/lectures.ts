@@ -1,3 +1,4 @@
+import { correctionHistory } from "./correctionHistory.js";
 import { validateUploadSize } from "./uploads.js";
 import { sanitizeText } from "./text.js";
 import { plainPages } from "./public.js";
@@ -45,6 +46,7 @@ export class Lectures {
       id,
       moduleId,
       slidesResourceId,
+      version: 0,
       status: "queued",
       words: [],
       flags: [],
@@ -63,9 +65,7 @@ export class Lectures {
           term: sanitizeText(term.term),
           definition: sanitizeText(term.definition),
         }));
-        const corrections = (await this.s.all("corrections", { moduleId })).map(
-          (c) => ({ heard: c.from, correct: c.to, count: c.count }),
-        );
+        const corrections = await correctionHistory(this.s, moduleId);
         const transcribed = await this.ai.upload(
           "/v1/transcribe",
           buffer,
@@ -140,12 +140,45 @@ export class Lectures {
       .slice(start, end)
       .map((w: any) => w.w)
       .join(" ");
-    await this.s.put("lectures", { ...l, ...fixed });
+    await correctionHistory(this.s, l.moduleId); // migrate old counters before appending a journal event
+    const version = l.version ?? 0;
+    const accepted = await this.s.db.collection("lectures").updateOne(
+      {
+        id: l.id,
+        $or: [
+          { version },
+          ...(version === 0 ? [{ version: { $exists: false } }] : []),
+        ],
+      },
+      {
+        $set: fixed,
+        $inc: { version: 1 },
+        $push: {
+          correctionEvents: {
+            id: randomUUID(),
+            heard: from,
+            correct: to,
+            createdAt: Date.now(),
+          },
+        },
+      } as any,
+    );
+    if (!accepted.matchedCount)
+      throw new ApiError(
+        "bad_request",
+        "Lecture changed while applying this correction; reload and retry",
+      );
+    const history = await correctionHistory(this.s, l.moduleId);
+    const entry = history.find(
+      (h) =>
+        h.heard.toLowerCase() === from.toLowerCase() &&
+        h.correct.toLowerCase() === to.toLowerCase(),
+    )!;
     await this.s.db.collection("corrections").updateOne(
       { id: `${l.moduleId}:${from.toLowerCase()}:${to.toLowerCase()}` },
       {
-        $setOnInsert: { moduleId: l.moduleId, from, to },
-        $inc: { count: 1 },
+        $setOnInsert: { moduleId: l.moduleId, from, to, legacyCount: 0 },
+        $max: { count: entry.count },
       },
       { upsert: true },
     );

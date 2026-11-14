@@ -32,6 +32,7 @@ describe("Module A HTTP contract adapter", () => {
     );
     app.post("/v1/transcribe", multer().single("file"), (req, res) => {
       expect(req.file?.originalname).toBe("clip.wav");
+      expect(req.file?.mimetype).toBe("audio/wav");
       expect(JSON.parse(req.body.glossary)).toEqual(["chain rule"]);
       expect(JSON.parse(req.body.hints)).toEqual(["backpropagation"]);
       res.json({ words: [], text: "" });

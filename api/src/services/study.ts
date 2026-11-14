@@ -1,3 +1,5 @@
+import { publicConcept } from "./public.js";
+import { servableQuestion } from "./questions.js";
 import { randomUUID } from "node:crypto";
 import { Store } from "../db/store.js";
 import type { AiClient } from "../ai/aiClient.js";
@@ -35,7 +37,7 @@ export class Study {
       cs = cs.filter((c) => modules.some((m) => m.id === c.moduleId));
     }
     return {
-      nodes: cs.map(({ embedding, ...c }) => c),
+      nodes: cs.map(publicConcept),
       edges: (await this.s.all<Edge>("edges")).filter(
         (e) => cs.some((c) => c.id === e.from) && cs.some((c) => c.id === e.to),
       ),
@@ -57,9 +59,8 @@ export class Study {
       throw new ApiError("not_found", "Concept not found in this module");
     const pages = await modulePages(this.s, filter.moduleId);
     const stored = async () =>
-      (await this.s.all<Question>("questions")).filter(
-        (q) =>
-          q.citations?.length && q.citations.every((e) => verified(e, pages)),
+      (await this.s.all<Question>("questions")).filter((q) =>
+        servableQuestion(q, pages),
       );
     let qs = selectQuestions(await stored(), cs, attempts, filter);
     // A down must not prevent already-stored questions from being served.
@@ -76,8 +77,10 @@ export class Study {
             this.s,
             this.ai,
             c,
-            filter.kind ?? "conceptual",
-            filter.n,
+            filter.kind ??
+              qs.find((q) => q.conceptIds.includes(c.id))?.kind ??
+              "conceptual",
+            filter.difficulty ? 20 : filter.n,
           );
         } catch (e) {
           if (!qs.length) throw e;
@@ -124,11 +127,25 @@ export class Study {
         b.createdAt - a.createdAt || (b.sequence ?? 0) - (a.sequence ?? 0),
     );
     const value = readiness(attempts.filter((a) => a.conceptId === c.id));
-    await this.s.db
-      .collection("concepts")
-      .updateOne({ id: c.id }, { $set: { readiness: value } });
+    const latest = Math.max(
+      ...attempts
+        .filter((a) => a.conceptId === c.id)
+        .map((a) => a.sequence ?? 0),
+    );
+    await this.s.db.collection("concepts").updateOne(
+      {
+        id: c.id,
+        $or: [
+          { readinessSequence: { $exists: false } },
+          { readinessSequence: { $lt: latest } },
+        ],
+      },
+      { $set: { readiness: value, readinessSequence: latest } },
+    );
     return {
-      readiness: { [c.id]: value },
+      readiness: Object.fromEntries(
+        (await this.s.all<Concept>("concepts")).map((x) => [x.id, x.readiness]),
+      ),
       trace: body.correct
         ? null
         : trace(

@@ -1,7 +1,13 @@
+import { saveConcept } from "./identity.js";
+import { servableQuestion } from "./questions.js";
 import { plainPages, publicConcept } from "./public.js";
 import { Store } from "../db/store.js";
 import { hash, type AiClient } from "../ai/aiClient.js";
-import { candidatePairs, type NeighborFinder } from "./neighbors.js";
+import {
+  candidatePairs,
+  curriculumPairs,
+  type NeighborFinder,
+} from "./neighbors.js";
 import { verified } from "./citations.js";
 import { ApiError, requireValue } from "./errors.js";
 import type { Concept, Page, Question } from "../contracts/types.js";
@@ -61,21 +67,16 @@ export async function build(
   )
     throw new ApiError("ai_unavailable", "Invalid embedding response");
   for (let i = 0; i < cs.length; i++) {
-    const old = await s.get("concepts", cs[i].id);
-    if (old && old.moduleId !== moduleId)
-      throw new ApiError(
-        "bad_request",
-        `Concept ID ${cs[i].id} already belongs to another module; shared ID policy needs review`,
-      );
     cs[i].embedding = vectors.vectors[i];
-    await s.put("concepts", {
-      ...cs[i],
-      readiness: old?.readiness ?? null,
-      examWeight: old?.examWeight ?? 1,
+    cs[i].id = await saveConcept(s, cs[i], {
+      allowModuleSuffix: process.env.CONCEPT_ID_COLLISIONS === "suffix",
     });
   }
   const all = await s.all<Concept>("concepts");
-  const pairs = await candidatePairs(all, finder);
+  const pairs = [
+    ...curriculumPairs(cs, pages),
+    ...(await candidatePairs(all, finder)),
+  ];
   const allPages = (
     await s.all("resources", { extractionStatus: "done" })
   ).flatMap((r) => r.pages);
@@ -86,19 +87,29 @@ export async function build(
     })),
     pages: allPages,
   });
-  for (const e of response.edges ?? [])
+  for (let index = 0; index < (response.edges ?? []).length; index++) {
+    const e = response.edges[index],
+      pair = pairs[index];
     if (
       e &&
+      pair &&
+      ((e.from === pair.a.id && e.to === pair.b.id) ||
+        (e.from === pair.b.id && e.to === pair.a.id)) &&
       ["prerequisite", "extends", "contrasts"].includes(e.type) &&
       all.some((c) => c.id === e.from) &&
       all.some((c) => c.id === e.to) &&
       verified(e.evidence?.from, allPages) &&
       verified(e.evidence?.to, allPages)
-    )
+    ) {
+      const existing = (
+        await s.all("edges", { from: e.from, to: e.to, type: e.type })
+      )[0];
       await s.put("edges", {
         ...e,
-        id: `e_${e.from}__${e.to}`,
+        id: existing?.id ?? `e_${e.from}__${e.to}`,
       });
+    }
+  }
   await weights(s, ai, moduleId);
 }
 export async function weights(s: Store, ai: AiClient, moduleId: string) {
@@ -142,11 +153,20 @@ export async function generate(
   });
   for (const q of result.questions ?? [])
     if (
+      servableQuestion(q, pages) &&
+      q.kind === kind &&
       q.verified === true &&
       q.conceptIds?.includes(c.id) &&
       [1, 2, 3].includes(q.difficulty) &&
       q.citations?.length &&
       q.citations.every((e: any) => verified(e, pages))
-    )
-      await s.put("questions", q as Question);
+    ) {
+      const existing = (await s.all<Question>("questions")).find(
+        (x) =>
+          x.kind === q.kind &&
+          x.conceptIds.includes(c.id) &&
+          x.text.trim().toLowerCase() === q.text.trim().toLowerCase(),
+      );
+      await s.put("questions", { ...q, id: existing?.id ?? q.id } as Question);
+    }
 }

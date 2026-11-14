@@ -6,6 +6,7 @@ import { connect } from "../src/db/store.js";
 import { seed } from "../src/services/seed.js";
 import { HttpAiClient } from "../src/ai/aiClient.js";
 import { createApp } from "../src/app.js";
+import { fixture } from "../src/services/sharedFixtures.js";
 import { sharedValidator } from "../src/contracts/shared.js";
 const url = process.env.AI_INTEGRATION_URL;
 describe.skipIf(!url)(
@@ -49,6 +50,53 @@ describe.skipIf(!url)(
       const graph = await request(ctx.app).get("/api/graph");
       expect(sharedValidator("Graph")(graph.body)).toBe(true);
       expect(graph.body.nodes).toHaveLength(4);
+    });
+    it("fresh build through actual A reconstructs canonical topology and provides two basic questions", async () => {
+      const db = await connect(mongo.getUri(), "real_a_fresh_build");
+      try {
+        await seed(db.store);
+        for (const name of ["concepts", "edges", "questions", "attempts"])
+          await db.store.db.collection(name).deleteMany({});
+        const fresh = createApp(db.store, new HttpAiClient(url!));
+        const b = await request(fresh.app).post(
+          "/api/modules/m_backprop/build",
+        );
+        await fresh.jobs.drain();
+        expect(await db.store.get("jobs", b.body.jobId)).toMatchObject({
+          status: "done",
+        });
+        const graph = (await request(fresh.app).get("/api/graph")).body;
+        const shape = (c: any) => {
+          const { readiness, examWeight, ...rest } = c;
+          return rest;
+        };
+        expect(graph.nodes.map(shape)).toEqual(
+          fixture("graph").nodes.map(shape),
+        );
+        expect(graph.edges).toEqual(fixture("graph").edges);
+        expect(graph.nodes.every((c: any) => c.readiness === null)).toBe(true);
+        const questions = await request(fresh.app)
+          .post("/api/questions/next")
+          .send({
+            moduleId: "m_backprop",
+            conceptId: "c_chain_rule",
+            kind: "mcq",
+            difficulty: 1,
+            n: 2,
+          });
+        expect(questions.status).toBe(200);
+        expect(questions.body.questions).toHaveLength(2);
+        expect(
+          new Set(questions.body.questions.map((q: any) => q.text)).size,
+        ).toBe(2);
+        expect(
+          questions.body.questions.every(
+            (q: any) => q.difficulty === 1 && q.verified,
+          ),
+        ).toBe(true);
+      } finally {
+        await db.client.close();
+      }
     });
     it("runs the actual lecture correction loop and teaches A after two accepts", async () => {
       for (let i = 0; i < 3; i++) {

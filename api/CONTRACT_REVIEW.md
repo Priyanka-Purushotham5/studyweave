@@ -1,5 +1,7 @@
 # Danush's B-to-C contract review
 
+**Status update:** the original review below is historical. The completion follow-up at the end records the implemented resolutions; shared files remain unchanged.
+
 Reviewed `origin/main` at `0cd9ff8` (`contracts/schemas.json`, `contracts/types.ts`, `contracts/README.md`, mapped fixtures, and the A endpoints). Shared contracts, fixtures and teammate source are unchanged. This report is a proposed follow-up discussion, not an approved contract change or a message sent to teammates.
 
 ## Accepted; B adapted to these shapes
@@ -37,3 +39,19 @@ AJV 2020-12 now validates existing shared request/response definitions at runtim
 - Actual A/B tests cover a real fixture PDF parse, seeded concept build, strict graph output, two accepted lecture corrections teaching the third lecture, and refusal when the fake citation is absent from the module pages.
 
 No message has been sent and no shared-schema changes have been made. The recommendations above can be copied into the team discussion or used for a coordinated contract PR.
+
+
+## Code-completion follow-up
+
+The original runtime gaps above are now resolved within Module B:
+
+- **Fresh builds:** B4 neighbor search still excludes same-module pairs. A separate source-aware curriculum candidate phase supplies within-module pairs for A to type. Fresh builds with no concept/edge rows reconstruct the fixture concept definitions/evidence and edge topology through the actual fake-mode A service. Fresh readiness stays null and exam weights reflect actual papers; the demo fixture's pre-existing mastery/weights are not invented for an unattempted build.
+- **Readiness/trace:** the explicit demo seed adds labelled synthetic histories, mathematically reproducing 82/35/52 and the complete agreed wrong-answer response (41, Chain rule likely gap). Shared fixtures are untouched; these records are never presented as real learner measurements.
+- **Basic practice:** generation requests enough candidates when filtering difficulty and deduplicates by concept/kind/text. Both FakeAiClient and actual A yield two distinct verified basic Chain rule questions from the existing shared raw fixtures.
+- **Identity:** existing IDs and fixtures are unchanged; a collision in another module receives a deterministic module suffix. Atomic conditional writes prevent another module from being overwritten, including concurrent creation. This fits the existing string-ID JSON schemas; the team should record the extended naming convention in a future reviewed documentation PR.
+- **Missing B endpoint definitions:** GET /api/openapi.json bundles shared definitions and complete local B endpoint schemas without editing the protected shared package. These can be promoted to shared contracts by coordinated PR; this is no longer a missing backend implementation.
+- **Extraction diagnostics:** POST resource responses provide a Location header; GET /api/resources/:id/status returns the existing shared JobStatus shape, including readable errors. No additional Resource properties were introduced.
+- **Question semantics:** B enforces option counts, answer letters, non-empty concepts and verified citations on persisted reads and generated writes, beyond the shared schema's current prose constraints.
+- **Durability:** concurrent attempts cannot overwrite newer readiness. Corrections are journalled atomically with the transcript, use revision checks, and rebuild their learned-count projection; old counter data migrates without losing counts.
+
+The default A fake still returns fixed model outputs, so semantic refusal on arbitrary questions is not a model-quality result. Real Gemini quality, production Atlas/vector behavior, public-domain HTTPS and the teammate-owned web/extension acceptance tests remain separate service/team validation steps, not claims made by the local fake acceptance suite.

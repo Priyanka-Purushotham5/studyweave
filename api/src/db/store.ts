@@ -81,8 +81,13 @@ export class Store {
 }
 export async function connect(uri: string, name = "studyweave") {
   const client = new MongoClient(uri, { serverSelectionTimeoutMS: 10000 });
-  await client.connect();
-  const store = new Store(client.db(name));
-  await store.indexes();
-  return { store, client };
+  try {
+    await client.connect();
+    const store = new Store(client.db(name));
+    await store.indexes();
+    return { store, client };
+  } catch (error) {
+    await client.close();
+    throw error;
+  }
 }

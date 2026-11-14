@@ -1,3 +1,4 @@
+import { openapi } from "../contracts/openapi.js";
 import { MAX_UPLOAD_BYTES } from "../services/uploads.js";
 import {
   publicResource,
@@ -31,6 +32,7 @@ export function routes(
   enableSeed = false,
 ) {
   const r = express.Router();
+  r.get("/openapi.json", (_req, res) => res.json(openapi));
   const ajv = new Ajv({ allErrors: true });
   const valid = Object.fromEntries(
     Object.entries(schemas).map(([k, v]) => [k, ajv.compile(v)]),
@@ -94,6 +96,31 @@ export function routes(
       }),
     );
   r.get(
+    "/resources/:id/status",
+    handle(async (req: any, res: any) => {
+      const row = requireValue(
+        await s.get("resources", req.params.id),
+        "Resource not found",
+      );
+      if (row.extractionStatus === "done") {
+        res.json({ status: "done" });
+        return;
+      }
+      if (row.extractionStatus === "unsupported") {
+        res.json({
+          status: "failed",
+          error:
+            row.extractionError ??
+            "Text extraction is unsupported for this resource",
+        });
+        return;
+      }
+      const jobs = await s.all("jobs", { kind: "extract", ownerId: row.id });
+      const active = jobs.find((j) => ["queued", "running"].includes(j.status));
+      res.json(active ? publicJob(active) : { status: "queued" });
+    }),
+  );
+  r.get(
     "/resources/:id/file",
     handle(async (req: any, res: any) => {
       const row = requireValue(
@@ -119,7 +146,13 @@ export function routes(
     "/resources",
     validate("resource"),
     handle(async (req: any, res: any) =>
-      res.status(201).json(publicResource(await resources.save(req.body))),
+      (async () => {
+        const row = await resources.save(req.body);
+        return res
+          .status(201)
+          .location(`/api/resources/${row.id}/status`)
+          .json(publicResource(row));
+      })(),
     ),
   );
   r.post(
@@ -138,16 +171,14 @@ export function routes(
           "bad_request",
           "Provide a PDF or PPTX, moduleId and valid tag",
         );
+      const row = await resources.save(
+        { moduleId: req.body.moduleId, tag: req.body.tag },
+        req.file,
+      );
       res
         .status(201)
-        .json(
-          publicResource(
-            await resources.save(
-              { moduleId: req.body.moduleId, tag: req.body.tag },
-              req.file,
-            ),
-          ),
-        );
+        .location(`/api/resources/${row.id}/status`)
+        .json(publicResource(row));
     }),
   );
   r.post(

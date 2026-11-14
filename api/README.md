@@ -71,9 +71,19 @@ npm run eval:trace
 npm audit
 ```
 
-`tests/ai-integration.test.ts` requires a running A service and `AI_INTEGRATION_URL`; without it those three tests are explicitly skipped. CI starts fake-mode A automatically. Vitest starts an ephemeral MongoDB 7.0.14 using mongodb-memory-server; the first run downloads its binary. Tests also open loopback HTTP servers, so network/process sandbox permission may be required. No Atlas, Gemini, or production credentials are used. The trace evaluation uses 20 labelled synthetic cases; its hit rate is not a real-world user measurement.
+`tests/ai-integration.test.ts` requires a running A service and `AI_INTEGRATION_URL`; without it the actual-service integration tests are explicitly skipped. CI starts fake-mode A automatically. Vitest starts an ephemeral MongoDB 7.0.14 using mongodb-memory-server; the first run downloads its binary. Tests also open loopback HTTP servers, so network/process sandbox permission may be required. No Atlas, Gemini, or production credentials are used. The trace evaluation uses 20 labelled synthetic cases; its hit rate is not a real-world user measurement.
 
 See [IMPLEMENTATION.md](IMPLEMENTATION.md) for B-number coverage, acceptance evidence, decisions, limitations, and the complete changed-file inventory. See [deploy/README.md](../deploy/README.md) for container and HTTPS deployment steps.
+
+## Completion tools and cloud handoff
+
+- `GET /api/openapi.json` serves the complete B OpenAPI 3.1 document, bundling the authoritative shared definitions.
+- `GET /api/resources/:id/status` returns the shared JobStatus shape. Resource POST responses include its URL in Location so C can show extraction failures without adding fields to Resource.
+- The explicit demo seed adds **labelled synthetic attempt histories** reproducing the shared demo readiness and likely-gap response. It does not alter shared fixture files or represent real learner observations.
+- Fresh graph builds include a separate within-module candidate phase; NeighborFinder remains cross-module. Existing IDs stay unchanged and name collisions receive stable module suffixes.
+- `node --env-file=api/.env api/dist/checkDatabase.js` checks a saved database connection and normal indexes without printing its URI.
+- `node --env-file=api/.env api/dist/setupVector.js` creates/reuses the Atlas vector index and waits for queryability. Unsupported tiers stay on cosine; no paid upgrade is attempted.
+- Follow [CLOUD_SETUP.md](../deploy/CLOUD_SETUP.md) for the Atlas → checks → approved Vultr → public TLS sequence. **YOUR ACCOUNT/CREDENTIALS REQUIRED** at the marked steps; do not paste secrets into chat.
 
 ## Shared contracts and review
 
@@ -89,6 +99,7 @@ See [IMPLEMENTATION.md](IMPLEMENTATION.md) for B-number coverage, acceptance evi
 | POST | `/api/modules` | `{name, examId}` → created row |
 | POST | `/api/resources` | `{moduleId,type:"web"|"youtube",url,title?,text?}` → resource, initially pending |
 | POST | `/api/resources/upload` | multipart `file`, `moduleId`, `tag` → resource |
+| GET | `/api/resources/:id/status` | Extraction JobStatus and plain failure explanation |
 | GET | `/api/resources/:id/file` | Original PDF/PPTX bytes; optional single byte Range |
 | POST | `/api/modules/:id/build` | → 202 `{jobId}` |
 | GET | `/api/jobs/:id` | Persisted `queued/running/done/failed`, readable error on failure |

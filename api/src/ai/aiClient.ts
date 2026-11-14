@@ -80,7 +80,26 @@ export class HttpAiClient implements AiClient {
     fields: Record<string, string> = {},
   ) {
     const form = new FormData();
-    form.append("file", new Blob([new Uint8Array(data)]), filename);
+    const extension = filename.toLowerCase().split(".").pop() ?? "";
+    const mime: Record<string, string> = {
+      pdf: "application/pdf",
+      pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      wav: "audio/wav",
+      mp3: "audio/mpeg",
+      m4a: "audio/mp4",
+      mp4: "audio/mp4",
+      ogg: "audio/ogg",
+      webm: "audio/webm",
+      flac: "audio/flac",
+      aac: "audio/aac",
+    };
+    form.append(
+      "file",
+      new Blob([new Uint8Array(data)], {
+        type: mime[extension] ?? "application/octet-stream",
+      }),
+      filename,
+    );
     for (const [k, v] of Object.entries(fields)) form.append(k, v);
     return this.request(endpoint, { method: "POST", body: form });
   }
@@ -373,18 +392,46 @@ export class FakeAiClient implements AiClient {
             return source ?? null;
           }),
         };
-      case "/v1/questions/generate":
-        return {
-          questions: fixture("questions")
-            .questions.filter(
-              (q: any) =>
-                q.conceptIds.includes(body.concept.id) &&
-                q.kind === body.kind &&
-                q.citations.every((e: any) => verified(e, pages)),
-            )
-            .slice(0, body.n),
-          dropped: 0,
-        };
+      case "/v1/questions/generate": {
+        const ready = fixture("questions").questions.filter(
+          (q: any) =>
+            q.conceptIds.includes(body.concept.id) &&
+            q.kind === body.kind &&
+            q.citations.every((e: any) => verified(e, pages)),
+        );
+        const raw = ["mcq", "past_paper"].includes(body.kind)
+          ? fixture("ai_raw/questions_generate").questions
+          : [];
+        for (const item of raw) {
+          if (
+            !Array.isArray(item.options) ||
+            item.options.length !== 4 ||
+            !["A", "B", "C", "D"].includes(item.answer) ||
+            !item.citations?.length ||
+            !item.citations.every((e: any) => verified(e, pages)) ||
+            ready.some((q: any) => q.text === item.text)
+          )
+            continue;
+          ready.push({
+            id:
+              "q_" +
+              hash({
+                concept: body.concept.id,
+                kind: body.kind,
+                text: item.text,
+              }).slice(0, 20),
+            conceptIds: [body.concept.id],
+            kind: body.kind,
+            text: item.text,
+            answer: item.answer,
+            options: item.options,
+            difficulty: item.difficulty,
+            citations: item.citations,
+            verified: true,
+          });
+        }
+        return { questions: ready.slice(0, body.n), dropped: 0 };
+      }
       case "/v1/answer":
         return /chain|gradient|backprop/i.test(
           body.question ?? body.kind ?? "",

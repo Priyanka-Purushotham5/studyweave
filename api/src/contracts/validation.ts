@@ -46,6 +46,11 @@ export function responseValidation(
     else if (req.path === "/api/revision-path") key = "revisionPath";
     else if (/^\/api\/(subjects|exams|modules)$/.test(req.path))
       key = "created";
+    else if (
+      req.path.startsWith("/api/resources/") &&
+      req.path.endsWith("/status")
+    )
+      key = "job";
     else if (req.path.startsWith("/api/resources")) key = "resource";
     else if (req.path.endsWith("/build")) key = "jobId";
     else if (req.path.startsWith("/api/jobs/")) key = "job";
