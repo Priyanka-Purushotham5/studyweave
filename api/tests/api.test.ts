@@ -27,7 +27,11 @@ let ctx: ReturnType<typeof createApp>;
 let fake: FakeAiClient;
 beforeAll(async () => {
   mongo = await MongoMemoryServer.create({
-    binary: { version: "7.0.14", downloadDir: "/tmp/studyweave-mongodb" },
+    binary: {
+      version: "7.0.14",
+      downloadDir:
+        process.env.MONGOMS_DOWNLOAD_DIR ?? "/tmp/studyweave-mongodb",
+    },
   });
   connection = await connect(mongo.getUri());
   s = connection.store;

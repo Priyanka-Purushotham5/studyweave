@@ -149,3 +149,7 @@ Verification: 90 B tests across 9 files passed, including three real HTTP integr
 The running local demo is B at 127.0.0.1:3000, A at 127.0.0.1:8001 (FAKE_GEMINI=1, key unset), and MongoDB at 127.0.0.1:27018, database studyweave_demo. These are local processes with temporary local DB data, not a deployed managed service.
 
 See CONTRACT_REVIEW.md for requested B-to-C additions and unresolved ID, attempt-history, within-module candidate and fake-service decisions. In particular, passing a seeded build does not prove fresh-build equality to graph.json. No shared-contract edits or teammate messages were made, and no branch has been pushed.
+
+### Clean CI cache reliability
+
+The first completion CI run exposed simultaneous mongodb-memory-server downloads trying to rename the same archive. Vitest now runs files sequentially while retaining parallel operations inside concurrency tests; no tests were skipped and no hook timeout was increased. Tests accept MONGOMS_DOWNLOAD_DIR for isolated cache verification. A fresh-cache local run passed all 113 tests in 41 seconds before pushing the fix.
