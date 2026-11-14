@@ -1,8 +1,15 @@
 # Existing-server override: keep the host's Caddy as the sole public listener.
 # Use with docker-compose.yml; the UI proxy binds only to server loopback.
 services:
+  api:
+    environment:
+      PUBLIC_DEMO: "true"
   caddy:
     environment:
       DOMAIN: http://:3006
+    volumes: !override
+      - ./Caddyfile.public-demo:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     ports: !override
       - "127.0.0.1:3006:3006"

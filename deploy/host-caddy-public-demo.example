@@ -1,0 +1,23 @@
+# Replace the existing API site only after backing up and validating the complete
+# Caddyfile. Both sites share the same exact API allowlist.
+(public_demo_api) {
+    @reads {
+        method GET
+        path /api/tree /api/graph /healthz /readyz
+    }
+    @interactions {
+        method POST
+        path /api/questions/next /api/attempts
+    }
+    route {
+        reverse_proxy @reads 127.0.0.1:3003
+        reverse_proxy @interactions 127.0.0.1:3003
+        respond 404
+    }
+}
+api.studynova.ink {
+    import public_demo_api
+}
+studynova.ink {
+    reverse_proxy 127.0.0.1:3006
+}
