@@ -80,7 +80,7 @@ See [IMPLEMENTATION.md](IMPLEMENTATION.md) for B-number coverage, acceptance evi
 - `GET /api/openapi.json` serves the complete B OpenAPI 3.1 document, bundling the authoritative shared definitions.
 - `GET /api/resources/:id/status` returns the shared JobStatus shape. Resource POST responses include its URL in Location so C can show extraction failures without adding fields to Resource.
 - The explicit demo seed adds **labelled synthetic attempt histories** reproducing the shared demo readiness and likely-gap response. It does not alter shared fixture files or represent real learner observations.
-- Fresh graph builds include a separate within-module candidate phase; NeighborFinder remains cross-module. Existing IDs stay unchanged and name collisions receive stable module suffixes.
+- Fresh graph builds include a separate within-module candidate phase; NeighborFinder remains cross-module. Existing IDs stay unchanged. Stable module suffixes are implemented behind CONCEPT_ID_COLLISIONS=suffix; the default reject policy preserves the team convention until approval.
 - `node --env-file=api/.env api/dist/checkDatabase.js` checks a saved database connection and normal indexes without printing its URI.
 - `node --env-file=api/.env api/dist/setupVector.js` creates/reuses the Atlas vector index and waits for queryability. Unsupported tiers stay on cosine; no paid upgrade is attempted.
 - Follow [CLOUD_SETUP.md](../deploy/CLOUD_SETUP.md) for the Atlas → checks → approved Vultr → public TLS sequence. **YOUR ACCOUNT/CREDENTIALS REQUIRED** at the marked steps; do not paste secrets into chat.

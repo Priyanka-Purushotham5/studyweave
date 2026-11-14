@@ -1,5 +1,15 @@
 # Module B implementation handoff
 
+## Current completion status
+
+The code completion milestone is locally verified: fresh graph topology through real fake-mode A, synthetic histories matching the exact shared attempt response, two distinct basic root questions, extraction diagnostics, complete B OpenAPI, durable correction journalling/migration, concurrency guards, Atlas index lifecycle tooling, and deployment preflight are implemented. The canonical concept-ID convention remains the default; a tested suffix extension is opt-in pending team agreement.
+
+Final verification for this milestone: 113 B tests across 11 files; 140 A offline tests with 2 live tests skipped; 9 shared fixture/citation validations; TypeScript build, formatting and dependency audit. Built A/B/Mongo Docker services passed end-to-end acceptance. Caddy passed Basic authentication, rejection of an untrusted certificate and smoke checks over trusted local-CA HTTPS. Public-domain TLS, real Atlas/vector queries and real Gemini remain service-stage checks.
+
+The latest team main (3e5058d) is integrated. Shared contracts, fixtures and teammate source are unchanged. Deployment now builds Priyanka's ai-service/Dockerfile and calls ai-service:8001. See [CLOUD_SETUP.md](../deploy/CLOUD_SETUP.md): next action is user-created Atlas project/cluster/database user/IP access, with URI saved only in ignored api/.env. No manual collection/index creation is required and no paid service has been created.
+
+The sections below retain the history of earlier milestones and their then-current blockers.
+
 ## Scope and ownership
 
 The workspace initially contained only `.refact` editor metadata, with no source code, shared schemas, fixtures, or Git repository. A repository was initialized on `b/module-b-implementation`. No teammate folder was created or modified. Contracts/fixtures remain Module B-local proposals awaiting cross-module review. No secrets, credentials, purchases, provisioning, DNS changes, or public deployments were made.

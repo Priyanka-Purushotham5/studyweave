@@ -52,7 +52,7 @@ We then run the A+B demo checks against the Atlas-backed API. These checks inten
 When ready:
 
 1. Create or select the approved Ubuntu host and attach your SSH public key. Keep its private key on your machine; do not paste it into chat. Supply the host IP, SSH username and local key path (or use your SSH agent).
-2. Apply a Vultr firewall: permit SSH from your IP, and TCP 80/443 for public HTTPS. Do not publish API 3000, AI 8000, or MongoDB ports.
+2. Apply a Vultr firewall: permit SSH from your IP, and TCP 80/443 for public HTTPS. Do not publish API 3000, AI 8001, or MongoDB ports.
 3. Add the host IP to the Atlas IP access list.
 4. Point an **already-owned** domain/subdomain's A record at the host. If you have no domain, tell us before any registration/purchase.
 5. Install Docker/Compose on that host, check out the reviewed B branch, and create private `deploy/.env` settings using `deploy/.env.example`. Preserve the actual password hash's dollar signs by single-quoting it in that file.
