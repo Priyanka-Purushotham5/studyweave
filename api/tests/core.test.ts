@@ -1,0 +1,21 @@
+import {describe,it,expect} from 'vitest';
+import {readiness,trace,revisionPlan,revisionPath,applyCorrection,selectQuestions} from '../src/services/learning.js';
+import {concepts,edges,questions,pages} from '../src/fixtures/demo.js';
+import {cosine,CosineNeighborFinder,candidatePairs} from '../src/services/neighbors.js';
+import {hash} from '../src/ai/aiClient.js';
+import {verified} from '../src/services/citations.js';
+import {tree} from '../src/services/seed.js';
+import {config} from '../src/config.js';
+describe('deterministic learning',()=>{
+it.each([[[],null],[[true,false,true],67],[[true,true],100],[[false,false],0],[[true,false],56],[[false,true],44]])('readiness %j',(values,expected)=>expect(readiness((values as boolean[]).map(correct=>({correct})))).toBe(expected));
+it('nests empty subjects',()=>expect(tree([{id:'s'}],[],[],[])).toEqual([{id:'s',exams:[]} ]));
+it('traces weakest ancestor with nearest tie and terminates on cycles',()=>{const cs=concepts.map(c=>({...c,readiness:30}));expect(trace('c_backprop',cs,[...edges,{...edges[0],from:'c_backprop',to:'c_gradient'}],[]).rootConceptId).toBe('c_chain_rule');expect(trace('c_backprop',cs,edges,[1,2].map(i=>({id:String(i),conceptId:'c_chain_rule',questionId:'q',correct:false,createdAt:i}))).status).toBe('likely');expect(trace('c_backprop',cs,edges,[]).status).toBe('possible');});
+it('healthy prerequisites produce only retry',()=>{const t=trace('c_backprop',concepts.map(c=>({...c,readiness:70})),edges,[]);expect(revisionPath(t)).toEqual([{kind:'retry',conceptId:'c_backprop'}]);});
+it('revision steps follow root to target',()=>expect(revisionPath(trace('c_backprop',concepts.map((c,i)=>({...c,readiness:i?50:0})),edges,[])).map(x=>x.kind)).toEqual(['review','practice','review','retry']));
+it('priority and budget',()=>{const result=revisionPlan([{...concepts[0],examWeight:3,readiness:40},...concepts.slice(1)],17);expect(result[0].priority).toBe(180);expect(result.reduce((s,c)=>s+c.minutes,0)).toBe(17);expect(result.every(c=>c.minutes>=5)).toBe(true);expect(revisionPlan(concepts,4)).toEqual([]);});
+it('filters unverified and difficulty',()=>expect(selectQuestions([...questions,{...questions[0],id:'bad',verified:false}],concepts,[],{moduleId:'m_backprop',conceptId:'c_chain_rule',difficulty:1,n:2}).map(q=>q.id)).toEqual(['q_c_chain_rule_1']));
+it('correction removes overlap and shifts later indexes',()=>{const words=['back','propagation','is','good'].map((w,i)=>({w,startSec:i,endSec:i+1}));const flag={id:'f',startIdx:0,endIdx:2,heard:'',suggestion:'',score:90,reason:''};const result=applyCorrection(words,[flag,{...flag,id:'later',startIdx:3,endIdx:4}],0,2,'backpropagation');expect(result.words.map(w=>w.w)).toEqual(['backpropagation','is','good']);expect(result.flags[0].startIdx).toBe(2);expect(()=>applyCorrection(words,[],0,9,'x')).toThrow();});
+it('stable hashes and citation normalization',()=>{expect(hash({b:2,a:1})).toBe(hash({a:1,b:2}));expect(verified({...concepts[0].evidence[0],quote:'GRADIENT   descent minimizes a loss function.'},pages)).toBe(true);expect(verified({...concepts[0].evidence[0],quote:'hallucination'},pages)).toBe(false);expect(verified({...concepts[0].evidence[0],quote:''},pages)).toBe(false);});
+it('cosine ranks, excludes same module, deduplicates and caps pairs',async()=>{const cs=concepts.map((c,i)=>({...c,moduleId:String(i),embedding:i===2?[0,1]:[1,0]}));const f=new CosineNeighborFinder();expect((await f.find(cs[0],cs,1))[0].id).toBe(cs[1].id);expect((await candidatePairs(cs,f,1)).length).toBe(2);expect(cosine([0,0],[1,1])).toBe(0);});
+it('requires explicit runtime configuration',()=>{expect(()=>config({})).toThrow('MONGODB_URI');expect(()=>config({MONGODB_URI:'x',AI_MODE:'fake',NODE_ENV:'production',ENABLE_DEV_SEED:'true'})).toThrow();});
+});
