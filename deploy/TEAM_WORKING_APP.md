@@ -18,7 +18,7 @@ Before production changes, get the owner's explicit approval, back up the entire
 
 Rollback by restoring the saved Caddyfile, validating and reloading it, and restoring recorded images and Compose settings if needed. The prior policy is an anonymous fixture demo, so rollback changes access accordingly. Never delete volumes or Atlas data.
 
-Full mode uses a global in-process 180 POST-per-minute API limit shared by the team. It resets on restart, is not distributed, and does not limit unauthenticated Basic-auth attempts at host Caddy. Apply network-level protections before wider deployment. Secure credentials are essential: all signed-in teammates have the same access, and Basic authentication does not provide individual revocation or auditing.
+Full mode rejects browser write requests whose Origin is not `https://studynova.ink`; non-browser requests without an Origin are allowed. Full mode uses a global in-process 180 POST-per-minute API limit shared by the team. It resets on restart, is not distributed, and does not limit unauthenticated Basic-auth attempts at host Caddy. Apply network-level protections before wider deployment. Secure credentials are essential: all signed-in teammates have the same access, and Basic authentication does not provide individual revocation or auditing.
 
 ## Real Gemini
 

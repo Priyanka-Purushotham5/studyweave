@@ -8,6 +8,8 @@ export function config(env: NodeJS.ProcessEnv = process.env) {
     throw new Error("AI_SERVICE_URL is required unless AI_MODE=fake");
   if (env.NODE_ENV === "production" && env.ENABLE_DEV_SEED === "true")
     throw new Error("Development seed endpoint must be disabled in production");
+  if (env.TEAM_MODE === "true" && !env.TEAM_ALLOWED_ORIGIN)
+    throw new Error("TEAM_ALLOWED_ORIGIN is required in team mode");
   return {
     port,
     uri: env.MONGODB_URI,
@@ -18,5 +20,6 @@ export function config(env: NodeJS.ProcessEnv = process.env) {
     enableSeed: env.ENABLE_DEV_SEED === "true",
     publicDemo: env.PUBLIC_DEMO === "true",
     teamMode: env.TEAM_MODE === "true",
+    teamOrigin: env.TEAM_ALLOWED_ORIGIN,
   };
 }

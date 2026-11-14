@@ -18,6 +18,7 @@ export function createApp(
     enableSeed?: boolean;
     publicDemo?: boolean;
     teamMode?: boolean;
+    teamOrigin?: string;
     origin?: string;
     finder?: NeighborFinder;
   } = {},
@@ -59,6 +60,13 @@ export function createApp(
     let interactions = 0;
     app.use((req, res, next) => {
       if (req.method !== "POST" || !req.path.startsWith("/api/")) return next();
+      const origin = req.get("origin");
+      if (origin && origin !== options.teamOrigin)
+        return res
+          .status(403)
+          .json({
+            error: { code: "forbidden", message: "Origin not allowed" },
+          });
       if (Date.now() - windowStarted >= 60_000) {
         windowStarted = Date.now();
         interactions = 0;

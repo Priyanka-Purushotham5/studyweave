@@ -696,8 +696,19 @@ describe("public demo security policy", () => {
 
 describe("team deployment request limits", () => {
   it("rate limits API writes without disabling normal API routes", async () => {
-    const app = createApp(s, fake, { teamMode: true }).app;
+    const app = createApp(s, fake, {
+      teamMode: true,
+      teamOrigin: "https://studynova.ink",
+    }).app;
     expect((await request(app).get("/api/tree")).status).toBe(200);
+    expect(
+      (
+        await request(app)
+          .post("/api/subjects")
+          .set("Origin", "https://evil.example")
+          .send({ name: "Test" })
+      ).status,
+    ).toBe(403);
     expect(
       (await request(app).post("/api/subjects").send({ name: "Test" })).status,
     ).toBe(201);
