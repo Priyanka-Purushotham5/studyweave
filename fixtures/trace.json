@@ -1,0 +1,14 @@
+{
+  "rootConceptId": "c_chain_rule",
+  "path": [
+    "c_backpropagation",
+    "c_chain_rule"
+  ],
+  "readiness": 35,
+  "evidence": {
+    "resourceId": "r1",
+    "page": 2,
+    "quote": "compute the derivative of a composite function by multiplying the derivatives of its parts"
+  },
+  "status": "likely"
+}

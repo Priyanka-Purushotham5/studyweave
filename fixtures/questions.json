@@ -1,0 +1,169 @@
+{
+  "questions": [
+    {
+      "id": "q_chain_rule_1",
+      "conceptIds": [
+        "c_chain_rule"
+      ],
+      "kind": "mcq",
+      "text": "What does the chain rule let us compute?",
+      "options": [
+        "The derivative of a composite function",
+        "The integral of a polynomial",
+        "The mean of a dataset",
+        "The size of a gradient step"
+      ],
+      "answer": "A",
+      "difficulty": 1,
+      "citations": [
+        {
+          "resourceId": "r1",
+          "page": 2,
+          "quote": "compute the derivative of a composite function by multiplying the derivatives of its parts"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "q_backprop_1",
+      "conceptIds": [
+        "c_backpropagation"
+      ],
+      "kind": "mcq",
+      "text": "Which rule does backpropagation apply layer by layer?",
+      "options": [
+        "Product rule",
+        "Chain rule",
+        "Power rule",
+        "Quotient rule"
+      ],
+      "answer": "B",
+      "difficulty": 2,
+      "citations": [
+        {
+          "resourceId": "r1",
+          "page": 3,
+          "quote": "applies the chain rule layer by layer from the output back to the input"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "q_backprop_2",
+      "conceptIds": [
+        "c_backpropagation",
+        "c_gradient_descent"
+      ],
+      "kind": "mcq",
+      "text": "After backpropagation has produced the gradients, which step uses them to change the weights?",
+      "options": [
+        "Gradient descent",
+        "Data augmentation",
+        "Batch normalization",
+        "Weight initialization"
+      ],
+      "answer": "A",
+      "difficulty": 3,
+      "citations": [
+        {
+          "resourceId": "r1",
+          "page": 3,
+          "quote": "used by gradient descent to update the weights"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "q_gd_1",
+      "conceptIds": [
+        "c_gradient_descent"
+      ],
+      "kind": "conceptual",
+      "text": "In your own words, in which direction does gradient descent move the parameters?",
+      "options": [],
+      "answer": "In the direction of the negative gradient of the loss.",
+      "difficulty": 1,
+      "citations": [
+        {
+          "resourceId": "r1",
+          "page": 1,
+          "quote": "updates parameters in the direction of the negative gradient of the loss"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "q_act_1",
+      "conceptIds": [
+        "c_activation_functions"
+      ],
+      "kind": "mcq",
+      "text": "Why do networks use activation functions such as ReLU?",
+      "options": [
+        "To introduce non-linearity",
+        "To reduce the number of weights",
+        "To normalize the inputs",
+        "To compute the loss"
+      ],
+      "answer": "A",
+      "difficulty": 2,
+      "citations": [
+        {
+          "resourceId": "r1",
+          "page": 1,
+          "quote": "introduce non-linearity so that a network can represent more than a linear map"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "q_paper_1",
+      "conceptIds": [
+        "c_backpropagation",
+        "c_chain_rule"
+      ],
+      "kind": "past_paper",
+      "text": "Explain how backpropagation uses the chain rule.",
+      "options": [
+        "It multiplies local derivatives layer by layer from the output back to the input",
+        "It averages the weights of all layers",
+        "It sorts the layers by size",
+        "It removes layers with small weights"
+      ],
+      "answer": "A",
+      "difficulty": 2,
+      "citations": [
+        {
+          "resourceId": "r1",
+          "page": 3,
+          "quote": "applies the chain rule layer by layer from the output back to the input"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "id": "q_gd_2",
+      "conceptIds": [
+        "c_gradient_descent"
+      ],
+      "kind": "numerical",
+      "text": "A parameter is 5.0, its gradient is 2.0 and the learning rate is 0.1. What is the parameter after one gradient descent step?",
+      "options": [],
+      "answer": "4.8",
+      "difficulty": 2,
+      "citations": [
+        {
+          "resourceId": "r1",
+          "page": 1,
+          "quote": "updates parameters in the direction of the negative gradient of the loss"
+        },
+        {
+          "resourceId": "r1",
+          "page": 1,
+          "quote": "The learning rate controls the size of each step"
+        }
+      ],
+      "verified": true
+    }
+  ]
+}
