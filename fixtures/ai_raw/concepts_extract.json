@@ -1,0 +1,59 @@
+{
+  "concepts": [
+    {
+      "name": "Gradient descent",
+      "definition": "An iterative algorithm that updates parameters along the negative gradient of the loss.",
+      "evidence": [
+        {
+          "resourceId": "r1",
+          "page": 1,
+          "quote": "updates parameters in the direction of the negative gradient of the loss"
+        }
+      ]
+    },
+    {
+      "name": "Activation functions",
+      "definition": "Functions such as ReLU that add non-linearity to a network.",
+      "evidence": [
+        {
+          "resourceId": "r1",
+          "page": 1,
+          "quote": "introduce non-linearity so that a network can represent more than a linear map"
+        }
+      ]
+    },
+    {
+      "name": "Chain rule",
+      "definition": "The derivative of a composite function is the product of the derivatives of its parts.",
+      "evidence": [
+        {
+          "resourceId": "r1",
+          "page": 2,
+          "quote": "compute the derivative of a composite function by multiplying the derivatives of its parts"
+        }
+      ]
+    },
+    {
+      "name": "Backpropagation",
+      "definition": "Applies the chain rule layer by layer to get the gradient of the loss for every weight.",
+      "evidence": [
+        {
+          "resourceId": "r1",
+          "page": 3,
+          "quote": "applies the chain rule layer by layer from the output back to the input"
+        }
+      ]
+    },
+    {
+      "name": "Overfitting",
+      "definition": "A model memorizes the training data.",
+      "evidence": [
+        {
+          "resourceId": "r1",
+          "page": 3,
+          "quote": "overfitting is always caused by having too many parameters"
+        }
+      ]
+    }
+  ]
+}

@@ -14,6 +14,7 @@ def test_healthz():
 def test_every_error_code_has_the_contract_status():
     assert STATUS_BY_CODE == {
         "bad_request": 400,
+        "scanned_pdf": 422,
         "not_found": 404,
         "rate_limited": 429,
         "ai_unavailable": 503,

@@ -1,0 +1,590 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://studyweave.local/contracts/schemas.json",
+  "title": "StudyWeave contracts",
+  "description": "Single source of truth for every JSON shape that crosses a module boundary. Reference a shape as schemas.json#/$defs/<Name>. Change by pull request only; fixtures change in the same pull request.",
+  "$defs": {
+    "ErrorCode": {
+      "enum": ["bad_request", "scanned_pdf", "not_found", "rate_limited", "ai_unavailable", "internal"],
+      "description": "HTTP status: bad_request 400, scanned_pdf 422, not_found 404, rate_limited 429, ai_unavailable 503, internal 500."
+    },
+    "Error": {
+      "type": "object",
+      "required": ["error"],
+      "additionalProperties": false,
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "additionalProperties": false,
+          "properties": {
+            "code": { "$ref": "#/$defs/ErrorCode" },
+            "message": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+
+    "Evidence": {
+      "type": "object",
+      "required": ["resourceId", "page", "quote"],
+      "additionalProperties": false,
+      "properties": {
+        "resourceId": { "type": "string", "minLength": 1 },
+        "page": { "type": "integer", "minimum": 1 },
+        "quote": { "type": "string", "minLength": 1 },
+        "startSec": { "type": "number", "minimum": 0, "description": "Only for transcripts and videos." }
+      }
+    },
+    "Page": {
+      "type": "object",
+      "required": ["n", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "n": { "type": "integer", "minimum": 1 },
+        "text": { "type": "string" },
+        "startSec": { "type": "number", "minimum": 0 }
+      }
+    },
+    "ResourcePage": {
+      "type": "object",
+      "required": ["resourceId", "n", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "resourceId": { "type": "string", "minLength": 1 },
+        "n": { "type": "integer", "minimum": 1 },
+        "text": { "type": "string" },
+        "startSec": { "type": "number", "minimum": 0 }
+      }
+    },
+
+    "Concept": {
+      "type": "object",
+      "required": ["id", "moduleId", "name", "definition", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "moduleId": { "type": "string" },
+        "name": { "type": "string", "minLength": 1 },
+        "definition": { "type": "string" },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/Evidence" }, "minItems": 1 },
+        "examWeight": { "type": "integer", "minimum": 0, "description": "Filled in by B (number of papers testing the concept)." },
+        "readiness": { "type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "Filled in by B. null means no attempts yet." }
+      }
+    },
+    "ExtractedConcept": {
+      "type": "object",
+      "required": ["name", "definition", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "definition": { "type": "string" },
+        "evidence": { "type": "array", "items": { "$ref": "#/$defs/Evidence" }, "minItems": 1 }
+      }
+    },
+
+    "EdgeType": {
+      "enum": ["prerequisite", "extends", "contrasts"],
+      "description": "prerequisite: from must be understood before to. extends: to builds on from. contrasts: symmetric, from and to are easy to confuse."
+    },
+    "Edge": {
+      "type": "object",
+      "required": ["id", "from", "to", "type", "reason", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "type": { "$ref": "#/$defs/EdgeType" },
+        "reason": { "type": "string", "minLength": 1 },
+        "evidence": {
+          "type": "object",
+          "required": ["from", "to"],
+          "additionalProperties": false,
+          "properties": {
+            "from": { "$ref": "#/$defs/Evidence" },
+            "to": { "$ref": "#/$defs/Evidence" }
+          }
+        }
+      }
+    },
+
+    "QuestionKind": { "enum": ["mcq", "conceptual", "numerical", "past_paper"] },
+    "Question": {
+      "type": "object",
+      "required": ["id", "conceptIds", "kind", "text", "options", "answer", "difficulty", "citations", "verified"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "conceptIds": { "type": "array", "items": { "type": "string" } },
+        "kind": { "$ref": "#/$defs/QuestionKind" },
+        "text": { "type": "string", "minLength": 1 },
+        "options": { "type": "array", "items": { "type": "string" }, "maxItems": 4, "description": "Four options for mcq and past_paper; empty for conceptual and numerical." },
+        "answer": { "type": "string", "minLength": 1, "description": "Option letter A to D for mcq and past_paper; short model answer for conceptual and numerical." },
+        "difficulty": { "type": "integer", "minimum": 1, "maximum": 3, "description": "1 basic, 2 standard, 3 application." },
+        "citations": { "type": "array", "items": { "$ref": "#/$defs/Evidence" }, "minItems": 1 },
+        "verified": { "const": true }
+      }
+    },
+
+    "Word": {
+      "type": "object",
+      "required": ["w", "startSec", "endSec"],
+      "additionalProperties": false,
+      "properties": {
+        "w": { "type": "string" },
+        "startSec": { "type": "number", "minimum": 0 },
+        "endSec": { "type": "number", "minimum": 0 }
+      }
+    },
+    "Flag": {
+      "type": "object",
+      "required": ["id", "startIdx", "endIdx", "heard", "suggestion", "score", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "startIdx": { "type": "integer", "minimum": 0, "description": "Inclusive index into words[]." },
+        "endIdx": { "type": "integer", "minimum": 1, "description": "Exclusive index into words[]." },
+        "heard": { "type": "string" },
+        "suggestion": { "type": "string" },
+        "score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "reason": { "type": "string" }
+      }
+    },
+    "GlossaryTerm": {
+      "type": "object",
+      "required": ["term", "definition"],
+      "additionalProperties": false,
+      "properties": { "term": { "type": "string", "minLength": 3 }, "definition": { "type": "string" } }
+    },
+    "Correction": {
+      "type": "object",
+      "required": ["heard", "correct", "count"],
+      "additionalProperties": false,
+      "properties": {
+        "heard": { "type": "string" },
+        "correct": { "type": "string" },
+        "count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "AutoFix": {
+      "type": "object",
+      "required": ["startIdx", "endIdx", "to"],
+      "additionalProperties": false,
+      "properties": {
+        "startIdx": { "type": "integer", "minimum": 0 },
+        "endIdx": { "type": "integer", "minimum": 1 },
+        "to": { "type": "string" }
+      }
+    },
+
+    "Trace": {
+      "type": "object",
+      "required": ["rootConceptId", "path", "readiness", "evidence", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "rootConceptId": { "type": "string" },
+        "path": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "From the missed concept up to the root, inclusive." },
+        "readiness": { "type": ["number", "null"] },
+        "evidence": { "$ref": "#/$defs/Evidence" },
+        "status": { "enum": ["likely", "possible"], "description": "likely when the root has at least 2 attempts and readiness below 40, otherwise possible. The UI says 'likely gap', never 'cause'." }
+      }
+    },
+
+    "Resource": {
+      "type": "object",
+      "required": ["id", "moduleId", "type", "title", "extractionStatus"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "moduleId": { "type": "string" },
+        "type": { "enum": ["pdf", "pptx", "web", "youtube"] },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "tag": { "enum": ["lecture", "notes", "past_paper", "model_paper"] },
+        "extractionStatus": { "enum": ["pending", "done", "unsupported"] },
+        "pages": { "type": "array", "items": { "$ref": "#/$defs/Page" } }
+      }
+    },
+    "Module": {
+      "type": "object",
+      "required": ["id", "name", "resources"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "resources": { "type": "array", "items": { "$ref": "#/$defs/Resource" } }
+      }
+    },
+    "Exam": {
+      "type": "object",
+      "required": ["id", "name", "modules"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "modules": { "type": "array", "items": { "$ref": "#/$defs/Module" } }
+      }
+    },
+    "Subject": {
+      "type": "object",
+      "required": ["id", "name", "exams"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "exams": { "type": "array", "items": { "$ref": "#/$defs/Exam" } }
+      }
+    },
+    "Tree": {
+      "type": "object",
+      "required": ["subjects"],
+      "additionalProperties": false,
+      "properties": { "subjects": { "type": "array", "items": { "$ref": "#/$defs/Subject" } } }
+    },
+    "Graph": {
+      "type": "object",
+      "required": ["nodes", "edges"],
+      "additionalProperties": false,
+      "properties": {
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/Concept" } },
+        "edges": { "type": "array", "items": { "$ref": "#/$defs/Edge" } }
+      }
+    },
+
+    "ParseResponse": {
+      "type": "object",
+      "required": ["pages"],
+      "additionalProperties": false,
+      "properties": { "pages": { "type": "array", "items": { "$ref": "#/$defs/Page" }, "minItems": 1 } }
+    },
+    "VideoTextRequest": {
+      "type": "object",
+      "required": ["url"],
+      "additionalProperties": false,
+      "properties": { "url": { "type": "string", "minLength": 1 } }
+    },
+    "VideoTextResponse": {
+      "type": "object",
+      "required": ["pages", "approximateTimestamps"],
+      "additionalProperties": false,
+      "properties": {
+        "pages": { "type": "array", "items": { "$ref": "#/$defs/Page" }, "minItems": 1 },
+        "approximateTimestamps": { "type": "boolean", "description": "Always true when any page has startSec. Timestamps are present only for videos of 10 minutes or less." }
+      }
+    },
+    "GlossaryRequest": {
+      "type": "object",
+      "required": ["pages"],
+      "additionalProperties": false,
+      "properties": { "pages": { "type": "array", "items": { "$ref": "#/$defs/Page" }, "minItems": 1 } }
+    },
+    "GlossaryResponse": {
+      "type": "object",
+      "required": ["terms"],
+      "additionalProperties": false,
+      "properties": { "terms": { "type": "array", "items": { "$ref": "#/$defs/GlossaryTerm" }, "maxItems": 200 } }
+    },
+    "TranscribeResponse": {
+      "type": "object",
+      "required": ["words", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "words": { "type": "array", "items": { "$ref": "#/$defs/Word" } },
+        "text": { "type": "string" }
+      }
+    },
+    "FlagRequest": {
+      "type": "object",
+      "required": ["words", "glossary"],
+      "additionalProperties": false,
+      "properties": {
+        "words": { "type": "array", "items": { "$ref": "#/$defs/Word" } },
+        "glossary": { "type": "array", "items": { "$ref": "#/$defs/GlossaryTerm" } },
+        "corrections": { "type": "array", "items": { "$ref": "#/$defs/Correction" } }
+      }
+    },
+    "FlagResponse": {
+      "type": "object",
+      "required": ["flags", "autoFixed"],
+      "additionalProperties": false,
+      "properties": {
+        "flags": { "type": "array", "items": { "$ref": "#/$defs/Flag" } },
+        "autoFixed": { "type": "array", "items": { "$ref": "#/$defs/AutoFix" } }
+      }
+    },
+    "ConceptsExtractRequest": {
+      "type": "object",
+      "required": ["moduleId", "pages"],
+      "additionalProperties": false,
+      "properties": {
+        "moduleId": { "type": "string" },
+        "pages": { "type": "array", "items": { "$ref": "#/$defs/ResourcePage" }, "minItems": 1 }
+      }
+    },
+    "ConceptsExtractResponse": {
+      "type": "object",
+      "required": ["concepts", "dropped"],
+      "additionalProperties": false,
+      "properties": {
+        "concepts": { "type": "array", "items": { "$ref": "#/$defs/ExtractedConcept" } },
+        "dropped": { "type": "integer", "minimum": 0, "description": "Concepts removed because no quote could be verified." }
+      }
+    },
+    "EmbedRequest": {
+      "type": "object",
+      "required": ["texts"],
+      "additionalProperties": false,
+      "properties": { "texts": { "type": "array", "items": { "type": "string" } } }
+    },
+    "EmbedResponse": {
+      "type": "object",
+      "required": ["vectors"],
+      "additionalProperties": false,
+      "properties": {
+        "vectors": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": "number" }, "minItems": 768, "maxItems": 768 }
+        }
+      }
+    },
+    "EdgesTypeRequest": {
+      "type": "object",
+      "required": ["pairs", "pages"],
+      "additionalProperties": false,
+      "description": "pages is needed so A can verify both quotes of every edge against the source text.",
+      "properties": {
+        "pairs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["a", "b"],
+            "additionalProperties": false,
+            "properties": { "a": { "$ref": "#/$defs/Concept" }, "b": { "$ref": "#/$defs/Concept" } }
+          }
+        },
+        "pages": { "type": "array", "items": { "$ref": "#/$defs/ResourcePage" } }
+      }
+    },
+    "EdgesTypeResponse": {
+      "type": "object",
+      "required": ["edges"],
+      "additionalProperties": false,
+      "description": "One entry per input pair, in order. null means no verified edge.",
+      "properties": { "edges": { "type": "array", "items": { "oneOf": [{ "$ref": "#/$defs/Edge" }, { "type": "null" }] } } }
+    },
+    "QuestionsGenerateRequest": {
+      "type": "object",
+      "required": ["concept", "pages", "kind", "n"],
+      "additionalProperties": false,
+      "properties": {
+        "concept": { "$ref": "#/$defs/Concept" },
+        "pages": { "type": "array", "items": { "$ref": "#/$defs/ResourcePage" }, "minItems": 1 },
+        "kind": { "$ref": "#/$defs/QuestionKind" },
+        "n": { "type": "integer", "minimum": 1, "maximum": 20 }
+      }
+    },
+    "QuestionsGenerateResponse": {
+      "type": "object",
+      "required": ["questions", "dropped"],
+      "additionalProperties": false,
+      "properties": {
+        "questions": { "type": "array", "items": { "$ref": "#/$defs/Question" } },
+        "dropped": { "type": "integer", "minimum": 0 },
+        "refused": { "const": true, "description": "Present only when the pages do not support the concept; questions is then empty." }
+      }
+    },
+    "PapersTagRequest": {
+      "type": "object",
+      "required": ["pages", "concepts"],
+      "additionalProperties": false,
+      "properties": {
+        "pages": { "type": "array", "items": { "$ref": "#/$defs/Page" }, "minItems": 1 },
+        "concepts": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "PapersTagResponse": {
+      "type": "object",
+      "required": ["questions"],
+      "additionalProperties": false,
+      "properties": {
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["text", "concepts"],
+            "additionalProperties": false,
+            "properties": { "text": { "type": "string" }, "concepts": { "type": "array", "items": { "type": "string" } } }
+          }
+        }
+      }
+    },
+    "AnswerRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["question", "pages"],
+          "additionalProperties": false,
+          "properties": {
+            "question": { "type": "string", "minLength": 1 },
+            "pages": { "type": "array", "items": { "$ref": "#/$defs/ResourcePage" }, "minItems": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "pages"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["summary", "formula_sheet"] },
+            "pages": { "type": "array", "items": { "$ref": "#/$defs/ResourcePage" }, "minItems": 1 }
+          }
+        }
+      ]
+    },
+    "AnswerResponse": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["answer", "citations"],
+          "additionalProperties": false,
+          "properties": {
+            "answer": { "type": "string" },
+            "citations": { "type": "array", "items": { "$ref": "#/$defs/Evidence" }, "minItems": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["refused", "reason"],
+          "additionalProperties": false,
+          "properties": { "refused": { "const": true }, "reason": { "const": "not_in_materials" } }
+        }
+      ]
+    },
+    "SuggestModuleRequest": {
+      "type": "object",
+      "required": ["title", "snippet", "modules"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string" },
+        "snippet": { "type": "string" },
+        "modules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "path"],
+            "additionalProperties": false,
+            "properties": { "id": { "type": "string" }, "path": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "SuggestModuleResponse": {
+      "type": "object",
+      "required": ["moduleId", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "moduleId": { "type": ["string", "null"] },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+
+    "QuestionsNextRequest": {
+      "type": "object",
+      "required": ["moduleId", "n"],
+      "additionalProperties": false,
+      "properties": {
+        "moduleId": { "type": "string" },
+        "kind": { "$ref": "#/$defs/QuestionKind" },
+        "n": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "conceptId": { "type": "string" },
+        "difficulty": { "type": "integer", "minimum": 1, "maximum": 3 }
+      }
+    },
+    "QuestionsNextResponse": {
+      "type": "object",
+      "required": ["questions"],
+      "additionalProperties": false,
+      "properties": { "questions": { "type": "array", "items": { "$ref": "#/$defs/Question" } } }
+    },
+    "AttemptRequest": {
+      "type": "object",
+      "required": ["questionId", "conceptId", "correct"],
+      "additionalProperties": false,
+      "properties": { "questionId": { "type": "string" }, "conceptId": { "type": "string" }, "correct": { "type": "boolean" } }
+    },
+    "AttemptResponse": {
+      "type": "object",
+      "required": ["readiness", "trace", "xp"],
+      "additionalProperties": false,
+      "properties": {
+        "readiness": { "type": "object", "additionalProperties": { "type": ["number", "null"] } },
+        "trace": { "oneOf": [{ "$ref": "#/$defs/Trace" }, { "type": "null" }] },
+        "xp": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "RevisionPlan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["conceptId", "name", "priority", "minutes"],
+        "additionalProperties": false,
+        "properties": {
+          "conceptId": { "type": "string" },
+          "name": { "type": "string" },
+          "priority": { "type": "number", "minimum": 0 },
+          "minutes": { "type": "integer", "minimum": 5 }
+        }
+      }
+    },
+    "JobStatus": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "enum": ["queued", "running", "done", "failed"] },
+        "error": { "type": "string" }
+      }
+    },
+    "Lecture": {
+      "type": "object",
+      "required": ["words", "flags", "glossary", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "words": { "type": "array", "items": { "$ref": "#/$defs/Word" } },
+        "flags": { "type": "array", "items": { "$ref": "#/$defs/Flag" } },
+        "glossary": { "type": "array", "items": { "$ref": "#/$defs/GlossaryTerm" } },
+        "status": { "enum": ["queued", "running", "done", "failed"] }
+      }
+    },
+    "CorrectionRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["flagId"],
+          "additionalProperties": false,
+          "properties": { "flagId": { "type": "string" } }
+        },
+        {
+          "type": "object",
+          "required": ["startIdx", "endIdx", "to"],
+          "additionalProperties": false,
+          "properties": {
+            "startIdx": { "type": "integer", "minimum": 0 },
+            "endIdx": { "type": "integer", "minimum": 1 },
+            "to": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "CorrectionResponse": {
+      "type": "object",
+      "required": ["words", "flags"],
+      "additionalProperties": false,
+      "properties": {
+        "words": { "type": "array", "items": { "$ref": "#/$defs/Word" } },
+        "flags": { "type": "array", "items": { "$ref": "#/$defs/Flag" } }
+      }
+    }
+  }
+}

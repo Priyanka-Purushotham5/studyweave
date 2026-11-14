@@ -1,0 +1,24 @@
+{
+  "terms": [
+    {
+      "term": "Backpropagation",
+      "definition": "Applies the chain rule layer by layer to compute gradients."
+    },
+    {
+      "term": "Gradient descent",
+      "definition": "Updates parameters along the negative gradient of the loss."
+    },
+    {
+      "term": "Chain rule",
+      "definition": "Derivative of a composite function."
+    },
+    {
+      "term": "Activation function",
+      "definition": "A non-linear function applied to a layer's output."
+    },
+    {
+      "term": "ReLU",
+      "definition": "Rectified linear unit, max(0, x)."
+    }
+  ]
+}

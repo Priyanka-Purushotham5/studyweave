@@ -1,0 +1,78 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 363 >>
+stream
+BT
+/F1 11 Tf
+50 740 Td
+14 TL
+(Gradient descent is an iterative optimization algorithm that updates parameters) Tj T*
+(in the direction of the negative gradient of the loss. The learning rate) Tj T*
+(controls the size of each step. Activation functions such as ReLU introduce non-) Tj T*
+(linearity so that a network can represent more than a linear map.) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 293 >>
+stream
+BT
+/F1 11 Tf
+50 740 Td
+14 TL
+(The chain rule lets us compute the derivative of a composite function by) Tj T*
+(multiplying the derivatives of its parts. If y = f\(g\(x\)\) then dy/dx = f'\(g\(x\)\)) Tj T*
+(g'\(x\). Every layer of a neural network is a composite of simpler functions.) Tj T*
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 407 >>
+stream
+BT
+/F1 11 Tf
+50 740 Td
+14 TL
+(Backpropagation applies the chain rule layer by layer from the output back to) Tj T*
+(the input to compute the gradient of the loss with respect to every weight. The) Tj T*
+(gradients it produces are then used by gradient descent to update the weights.) Tj T*
+(Overfitting happens when a model memorizes the training data instead of learning) Tj T*
+(general patterns.) Tj T*
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000197 00000 n 
+0000000611 00000 n 
+0000000737 00000 n 
+0000001081 00000 n 
+0000001207 00000 n 
+0000001665 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+1791
+%%EOF

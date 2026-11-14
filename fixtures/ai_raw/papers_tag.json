@@ -1,0 +1,24 @@
+{
+  "questions": [
+    {
+      "text": "Explain how backpropagation uses the chain rule.",
+      "concepts": [
+        "Backpropagation",
+        "Chain rule"
+      ]
+    },
+    {
+      "text": "State what the learning rate controls in gradient descent.",
+      "concepts": [
+        "Gradient descent",
+        "Learning rate"
+      ]
+    },
+    {
+      "text": "Why do networks need activation functions?",
+      "concepts": [
+        "Activation functions"
+      ]
+    }
+  ]
+}

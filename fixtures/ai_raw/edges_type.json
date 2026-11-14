@@ -1,0 +1,40 @@
+{
+  "edges": [
+    {
+      "pair": 0,
+      "type": "prerequisite",
+      "from_is": "a",
+      "reason": "Backpropagation applies the chain rule layer by layer.",
+      "evidence_a": {
+        "resourceId": "r1",
+        "page": 2,
+        "quote": "compute the derivative of a composite function by multiplying the derivatives of its parts"
+      },
+      "evidence_b": {
+        "resourceId": "r1",
+        "page": 3,
+        "quote": "applies the chain rule layer by layer from the output back to the input"
+      }
+    },
+    {
+      "pair": 1,
+      "type": "prerequisite",
+      "from_is": "a",
+      "reason": "Gradient descent consumes the gradients that backpropagation produces.",
+      "evidence_a": {
+        "resourceId": "r1",
+        "page": 1,
+        "quote": "updates parameters in the direction of the negative gradient of the loss"
+      },
+      "evidence_b": {
+        "resourceId": "r1",
+        "page": 3,
+        "quote": "used by gradient descent to update the weights"
+      }
+    },
+    {
+      "pair": 2,
+      "type": "none"
+    }
+  ]
+}

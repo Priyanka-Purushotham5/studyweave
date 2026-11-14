@@ -1,0 +1,26 @@
+[
+  {
+    "conceptId": "c_chain_rule",
+    "name": "Chain rule",
+    "priority": 195,
+    "minutes": 10
+  },
+  {
+    "conceptId": "c_backpropagation",
+    "name": "Backpropagation",
+    "priority": 144,
+    "minutes": 10
+  },
+  {
+    "conceptId": "c_activation_functions",
+    "name": "Activation functions",
+    "priority": 100,
+    "minutes": 5
+  },
+  {
+    "conceptId": "c_gradient_descent",
+    "name": "Gradient descent",
+    "priority": 36,
+    "minutes": 5
+  }
+]

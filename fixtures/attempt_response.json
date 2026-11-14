@@ -1,0 +1,23 @@
+{
+  "readiness": {
+    "c_backpropagation": 41,
+    "c_chain_rule": 35,
+    "c_gradient_descent": 82,
+    "c_activation_functions": null
+  },
+  "trace": {
+    "rootConceptId": "c_chain_rule",
+    "path": [
+      "c_backpropagation",
+      "c_chain_rule"
+    ],
+    "readiness": 35,
+    "evidence": {
+      "resourceId": "r1",
+      "page": 2,
+      "quote": "compute the derivative of a composite function by multiplying the derivatives of its parts"
+    },
+    "status": "likely"
+  },
+  "xp": 0
+}

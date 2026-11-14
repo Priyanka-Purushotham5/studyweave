@@ -1,0 +1,117 @@
+{
+  "words": [
+    {
+      "w": "so",
+      "startSec": 0.0,
+      "endSec": 0.4
+    },
+    {
+      "w": "back",
+      "startSec": 0.5,
+      "endSec": 0.9
+    },
+    {
+      "w": "propagation",
+      "startSec": 1.0,
+      "endSec": 1.4
+    },
+    {
+      "w": "applies",
+      "startSec": 1.5,
+      "endSec": 1.9
+    },
+    {
+      "w": "the",
+      "startSec": 2.0,
+      "endSec": 2.4
+    },
+    {
+      "w": "chain",
+      "startSec": 2.5,
+      "endSec": 2.9
+    },
+    {
+      "w": "rule",
+      "startSec": 3.0,
+      "endSec": 3.4
+    },
+    {
+      "w": "and",
+      "startSec": 3.5,
+      "endSec": 3.9
+    },
+    {
+      "w": "then",
+      "startSec": 4.0,
+      "endSec": 4.4
+    },
+    {
+      "w": "gradient",
+      "startSec": 4.5,
+      "endSec": 4.9
+    },
+    {
+      "w": "decent",
+      "startSec": 5.0,
+      "endSec": 5.4
+    },
+    {
+      "w": "updates",
+      "startSec": 5.5,
+      "endSec": 5.9
+    },
+    {
+      "w": "the",
+      "startSec": 6.0,
+      "endSec": 6.4
+    },
+    {
+      "w": "weights",
+      "startSec": 6.5,
+      "endSec": 6.9
+    }
+  ],
+  "flags": [
+    {
+      "id": "f1",
+      "startIdx": 1,
+      "endIdx": 3,
+      "heard": "back propagation",
+      "suggestion": "Backpropagation",
+      "score": 97,
+      "reason": "close match to glossary term"
+    },
+    {
+      "id": "f2",
+      "startIdx": 9,
+      "endIdx": 11,
+      "heard": "gradient decent",
+      "suggestion": "Gradient descent",
+      "score": 97,
+      "reason": "close match to glossary term"
+    }
+  ],
+  "glossary": [
+    {
+      "term": "Backpropagation",
+      "definition": "Applies the chain rule layer by layer to compute gradients."
+    },
+    {
+      "term": "Gradient descent",
+      "definition": "Updates parameters along the negative gradient of the loss."
+    },
+    {
+      "term": "Chain rule",
+      "definition": "Derivative of a composite function."
+    },
+    {
+      "term": "Activation function",
+      "definition": "A non-linear function applied to a layer's output."
+    },
+    {
+      "term": "ReLU",
+      "definition": "Rectified linear unit, max(0, x)."
+    }
+  ],
+  "status": "done"
+}
