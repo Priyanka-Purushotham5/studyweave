@@ -147,12 +147,16 @@ export function revisionPlan(cs: Concept[], budget: number) {
     ranked[i % ranked.length].minutes++;
   return ranked;
 }
-export function revisionPath(t: Trace) {
+export function revisionPath(t: Trace, concepts: Concept[] = []) {
   if (t.path.length === 1) return [{ kind: "retry", conceptId: t.path[0] }];
   return [
     { kind: "review", conceptId: t.rootConceptId, evidence: t.evidence },
     { kind: "practice", conceptId: t.rootConceptId, difficulty: 1, n: 2 },
-    ...t.path.slice(1, -1).map((conceptId) => ({ kind: "review", conceptId })),
+    ...t.path.slice(1, -1).map((conceptId) => ({
+      kind: "review",
+      conceptId,
+      evidence: concepts.find((c) => c.id === conceptId)?.evidence ?? [],
+    })),
     { kind: "retry", conceptId: t.path.at(-1) },
   ];
 }

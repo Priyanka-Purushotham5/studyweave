@@ -184,13 +184,15 @@ export class Study {
     if (typeof conceptId !== "string")
       throw new ApiError("bad_request", "conceptId required");
     requireValue(await this.s.get("concepts", conceptId), "Concept not found");
+    const concepts = await this.s.all<Concept>("concepts");
     return revisionPath(
       trace(
         conceptId,
-        await this.s.all("concepts"),
+        concepts,
         await this.s.all("edges"),
         await this.s.all("attempts"),
       ),
+      concepts,
     );
   }
 }

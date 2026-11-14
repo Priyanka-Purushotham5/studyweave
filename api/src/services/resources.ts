@@ -7,6 +7,7 @@ import * as cheerio from "cheerio";
 import { Store } from "../db/store.js";
 import { hash, type AiClient } from "../ai/aiClient.js";
 import { Jobs } from "./jobs.js";
+import { weights } from "./pipeline.js";
 import { ApiError, requireValue } from "./errors.js";
 export function splitPages(text: string) {
   const result = [];
@@ -128,17 +129,21 @@ export class Resources {
     const existing = (
       await this.s.all("resources", { moduleId: body.moduleId, hash: digest })
     )[0];
-    if (existing) return existing;
-    const id = randomUUID();
-    const fileId = file
-      ? await this.s.saveFile(
-          file.buffer,
-          file.originalname,
-          file.originalname.toLowerCase().endsWith(".pptx")
-            ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            : "application/pdf",
-        )
-      : undefined;
+    if (existing && existing.extractionStatus !== "unsupported")
+      return existing;
+    const id = existing?.id ?? randomUUID();
+    const fileId =
+      existing?.fileId ??
+      (file
+        ? await this.s.saveFile(
+            file.buffer,
+            file.originalname,
+            file.originalname.toLowerCase().endsWith(".pptx")
+              ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+              : "application/pdf",
+          )
+        : undefined);
+    const newlyStoredFile = !!fileId && !existing?.fileId;
     const row = {
       ...(fileId ? { fileId, url: `/api/resources/${id}/file` } : {}),
       id,
@@ -158,7 +163,7 @@ export class Resources {
       await this.s.put("resources", row);
     } catch (e: any) {
       if (e.code === 11000) {
-        if (fileId) await this.s.deleteFile(fileId);
+        if (newlyStoredFile) await this.s.deleteFile(fileId);
         return (
           await this.s.all("resources", {
             moduleId: body.moduleId,
@@ -166,7 +171,7 @@ export class Resources {
           })
         )[0];
       }
-      if (fileId) await this.s.deleteFile(fileId);
+      if (newlyStoredFile) await this.s.deleteFile(fileId);
       throw e;
     }
     await this.jobs.enqueue("extract", async () => {
@@ -189,6 +194,10 @@ export class Resources {
           pages: result.pages.map((p: any) => ({ ...p, resourceId: id })),
           extractionStatus: "done",
         });
+        if (["past_paper", "model_paper"].includes(body.tag))
+          await this.jobs.enqueue("paper-weights", () =>
+            weights(this.s, this.ai, body.moduleId),
+          );
       } catch (e) {
         await this.s.put("resources", {
           ...row,

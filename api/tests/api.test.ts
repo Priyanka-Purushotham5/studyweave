@@ -421,3 +421,74 @@ it("deployment smoke script passes against local seeded HTTP server", async () =
     await new Promise<void>((r) => server.close(() => r()));
   }
 });
+it("resubmitting failed extraction retries without duplicating original files", async () => {
+  await seed(s);
+  const upload = () =>
+    request(ctx.app)
+      .post("/api/resources/upload")
+      .field("moduleId", "m_backprop")
+      .field("tag", "notes")
+      .attach("file", Buffer.from("SCANNED"), "retry.pdf");
+  const first = await upload();
+  await ctx.jobs.drain();
+  expect((await s.get("resources", first.body.id)).extractionStatus).toBe(
+    "unsupported",
+  );
+  fake.upload = async () => ({ pages: [{ n: 1, text: "Recovered text" }] });
+  const again = await upload();
+  await ctx.jobs.drain();
+  expect(again.body.id).toBe(first.body.id);
+  expect((await s.get("resources", first.body.id)).extractionStatus).toBe(
+    "done",
+  );
+  expect(await s.db.collection("fs.files").countDocuments()).toBe(1);
+});
+it("cross-module build stores only typed, two-sided verified candidate edges", async () => {
+  await seed(s);
+  await s.put("modules", {
+    id: "m_other",
+    examId: "x_ml",
+    name: "Advanced backprop",
+  });
+  await s.put("resources", {
+    id: "r_other",
+    moduleId: "m_other",
+    type: "pdf",
+    title: "Advanced",
+    hash: "other",
+    extractionStatus: "done",
+    pages: [
+      {
+        n: 3,
+        resourceId: "r_other",
+        text: "Backpropagation applies the chain rule layer by layer.",
+      },
+    ],
+  });
+  const r = await request(ctx.app).post("/api/modules/m_other/build");
+  await ctx.jobs.drain();
+  expect((await s.get("jobs", r.body.jobId)).status).toBe("done");
+  const cs = await s.all("concepts", { moduleId: "m_other" });
+  expect(cs).toHaveLength(1);
+  const es = await s.all("edges", { to: cs[0].id });
+  expect(es).toHaveLength(1);
+  expect(es[0].from).toBe("c_chain_rule");
+  expect(es[0].evidence.from.resourceId).toBe("r_slides");
+  expect(es[0].evidence.to.resourceId).toBe("r_other");
+  expect((await s.all("edges")).every((e) => e !== null)).toBe(true);
+});
+it("uploading a second tagged paper raises graph weights without a rebuild", async () => {
+  await seed(s);
+  for (let i = 0; i < 2; i++) {
+    await request(ctx.app)
+      .post("/api/resources/upload")
+      .field("moduleId", "m_backprop")
+      .field("tag", "past_paper")
+      .attach("file", Buffer.from(`%PDF paper ${i}`), `paper${i}.pdf`);
+    await ctx.jobs.drain();
+    const graph = await request(ctx.app).get("/api/graph");
+    expect(
+      graph.body.nodes.find((c: any) => c.id === "c_chain_rule").examWeight,
+    ).toBe(i + 1);
+  }
+});

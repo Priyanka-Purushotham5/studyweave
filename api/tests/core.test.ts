@@ -209,3 +209,12 @@ it("equal readiness questions prioritize the most recent wrong attempt", () => {
   });
   expect(result[0].conceptIds).toContain("c_backprop");
 });
+it("revision reviews carry the intermediate evidence page", () => {
+  const nodes = concepts.map((c, i) => ({ ...c, readiness: i ? 50 : 10 }));
+  const path = revisionPath(trace("c_backprop", nodes, edges, []), nodes);
+  expect(path[2]).toMatchObject({
+    kind: "review",
+    conceptId: "c_chain_rule",
+    evidence: concepts[1].evidence,
+  });
+});
