@@ -2,15 +2,15 @@
     encode zstd gzip
     @reads {
         method GET
-        path /api/tree /api/graph /healthz /readyz
+        path /api/tree /api/graph /healthz
     }
     @interactions {
         method POST
         path /api/questions/next /api/attempts
     }
     route {
-        reverse_proxy @reads api:3000
-        reverse_proxy @interactions api:3000
+        reverse_proxy @reads api-public:3000
+        reverse_proxy @interactions api-public:3000
         @blocked path /api /api/* /healthz /readyz
         respond @blocked 404
         root * /srv

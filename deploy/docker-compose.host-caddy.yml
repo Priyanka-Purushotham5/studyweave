@@ -1,15 +1,40 @@
-# Existing-server override: keep the host's Caddy as the sole public listener.
-# Use with docker-compose.yml; the UI proxy binds only to server loopback.
+# Both UI ports and the public backend port are loopback-only. The team UI is
+# accessible only via an authenticated SSH tunnel to port 3007.
 services:
-  api:
+  api-public:
+    extends:
+      file: docker-compose.yml
+      service: api
     environment:
       PUBLIC_DEMO: "true"
+    ports:
+      - "127.0.0.1:3004:3000"
   caddy:
+    build:
+      context: ..
+      dockerfile: deploy/Web.Dockerfile
+      args:
+        VITE_PUBLIC_DEMO: "1"
     environment:
       DOMAIN: http://:3006
+    depends_on: !override
+      - api-public
     volumes: !override
       - ./Caddyfile.public-demo:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     ports: !override
       - "127.0.0.1:3006:3006"
+  caddy-team:
+    image: studynova-team-web:local
+    build:
+      context: ..
+      dockerfile: deploy/Web.Dockerfile
+      args:
+        VITE_PUBLIC_DEMO: "0"
+    restart: unless-stopped
+    networks: [backend]
+    ports:
+      - "127.0.0.1:3007:3007"
+    volumes:
+      - ./Caddyfile.team-tunnel:/etc/caddy/Caddyfile:ro

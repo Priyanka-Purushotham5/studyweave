@@ -3,15 +3,15 @@
 (public_demo_api) {
     @reads {
         method GET
-        path /api/tree /api/graph /healthz /readyz
+        path /api/tree /api/graph /healthz
     }
     @interactions {
         method POST
         path /api/questions/next /api/attempts
     }
     route {
-        reverse_proxy @reads 127.0.0.1:3003
-        reverse_proxy @interactions 127.0.0.1:3003
+        reverse_proxy @reads 127.0.0.1:3004
+        reverse_proxy @interactions 127.0.0.1:3004
         respond 404
     }
 }

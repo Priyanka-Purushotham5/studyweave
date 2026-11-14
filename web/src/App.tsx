@@ -22,6 +22,7 @@ const tabs = [
 type Screen = typeof tabs[number]["id"];
 type Detail = { concept: Concept } | { edge: Edge } | { evidence: Evidence } | { resource: Resource };
 const demo = import.meta.env.VITE_MOCK === "1";
+const publicDemo = import.meta.env.VITE_PUBLIC_DEMO === "1";
 const initialPrefs = { readable: false, contrast: false, motion: false };
 const emptyGraph: Graph = { nodes: [], edges: [] };
 
@@ -146,11 +147,11 @@ export default function App() {
 
   function openResource(resource?: Resource) {
     if (!resource) return;
-    if (resource.url) {
+    if (resource.url && (!publicDemo || !resource.url.startsWith("/api/"))) {
       const link = resourceUrl(resource, apiUrl);
       if (link) { window.open(link, "_blank", "noopener,noreferrer"); return; }
     }
-    if (!demo && !resource.pages?.length && (resource.type === "pdf" || resource.type === "pptx")) {
+    if (!demo && !publicDemo && !resource.pages?.length && (resource.type === "pdf" || resource.type === "pptx")) {
       const link = resourceUrl(resource, apiUrl);
       if (link) { window.open(link, "_blank", "noopener,noreferrer"); return; }
     }
@@ -204,8 +205,8 @@ export default function App() {
     <div className="panel-head"><div className="panel-title"><span className="tile-icon gap-icon"><Target size={17}/></span><div><h2 id="gap-title">{trace.status === "likely" ? "Likely gap" : "Possible gap"}: {currentGraph.nodes.find(item => item.id === trace.rootConceptId)?.name ?? trace.rootConceptId}</h2><p>{trace.path.map(id => currentGraph.nodes.find(item => item.id === id)?.name ?? id).join(" → ")}</p></div></div>
     <button className="icon-button" title="Dismiss learning gap" aria-label="Dismiss learning gap" onClick={() => { setTrace(null); setReview(undefined); }}><X size={17}/></button></div>
     <div className="panel-body workspace-form"><blockquote>“{trace.evidence.quote}”</blockquote><Citation evidence={trace.evidence} resources={resources} open={item => setDetail({ evidence: item })}/>
-    {!review ? <button className="button compact" disabled={busy} onClick={() => void run(async () => setReview(await api.path(trace.path[0] ?? trace.rootConceptId)))}>See revision path <ArrowRight size={15}/></button> :
-      <ol className="revision-path">{review.map((item, index) => <li key={index}>{({ review: "Review", practice: "Practice", retry: "Retry" })[item.kind]} {currentGraph.nodes.find(node => node.id === item.conceptId)?.name ?? item.conceptId}</li>)}</ol>}</div>
+    {!publicDemo && (!review ? <button className="button compact" disabled={busy} onClick={() => void run(async () => setReview(await api.path(trace.path[0] ?? trace.rootConceptId)))}>See revision path <ArrowRight size={15}/></button> :
+      <ol className="revision-path">{review.map((item, index) => <li key={index}>{({ review: "Review", practice: "Practice", retry: "Retry" })[item.kind]} {currentGraph.nodes.find(node => node.id === item.conceptId)?.name ?? item.conceptId}</li>)}</ol>)}</div>
   </section>;
 
   const gapCitations = (items: Evidence[]) => <div className="workspace-form">{items.map((item, index) => <div className="quote-card" key={index}><blockquote>“{item.quote}”</blockquote><Citation evidence={item} resources={resources} open={evidence => setDetail({ evidence })}/></div>)}</div>;
@@ -217,9 +218,9 @@ export default function App() {
       <div className="sidebar-body">
         <div className="sidebar-label">WORKSPACE</div>
         <nav aria-label="Workspace">
-          {tabs.map(({ id, name, Icon }) => <button key={id} type="button" aria-current={screen === id ? "page" : undefined} onClick={() => showScreen(id)}><Icon size={18}/><span>{name}</span>{screen === id && <span className="nav-indicator"/>}</button>)}
+          {tabs.filter(({ id }) => !publicDemo || (id !== "captions" && id !== "plan")).map(({ id, name, Icon }) => <button key={id} type="button" aria-current={screen === id ? "page" : undefined} onClick={() => showScreen(id)}><Icon size={18}/><span>{name}</span>{screen === id && <span className="nav-indicator"/>}</button>)}
         </nav>
-        <div className="sidebar-label courses-label"><span>COURSES</span><button className="icon-button" aria-label="Create course, exam, or module" title="Create course, exam, or module" onClick={() => { setCreateKind(subject ? "modules" : "subjects"); setModal("create"); }}><Plus size={17}/></button></div>
+        <div className="sidebar-label courses-label"><span>COURSES</span>{!publicDemo && <button className="icon-button" aria-label="Create course, exam, or module" title="Create course, exam, or module" onClick={() => { setCreateKind(subject ? "modules" : "subjects"); setModal("create"); }}><Plus size={17}/></button>}</div>
         <nav className="course-nav" aria-label="Courses">{tree.subjects.map(course => <div key={course.id}>
           <button onClick={() => { setSubject(course.id); setExam(""); setModule(""); setTrace(null); setReview(undefined); setScreen("map"); }}><span className="course-icon"><GraduationCap size={15}/></span><span>{course.name}</span></button>
           {subject?.id === course.id && course.exams.map(test => <div className="course-exam" key={test.id}>
@@ -236,7 +237,7 @@ export default function App() {
         <div className="actions">
           {demo && <span className="demo-badge"><span/> Demo</span>}
           <button className="icon-button" aria-label="Refresh workspace" title="Refresh workspace" disabled={busy} onClick={() => void run(async () => { await refresh(); if (subject) await refreshGraph(subject.id); })}><RefreshCw size={17}/></button>
-          <button className="button primary top-add" disabled={!mod || busy} onClick={() => setModal("capture")}><Plus size={17}/> Add material</button>
+          {!publicDemo && <button className="button primary top-add" disabled={!mod || busy} onClick={() => setModal("capture")}><Plus size={17}/> Add material</button>}
         </div>
       </header>
       <main id="main" className="main" tabIndex={-1}>
@@ -249,7 +250,7 @@ export default function App() {
               <h1 id="module-title">{mod.name}</h1><p>{subject?.name} <span>·</span> {exam?.name}</p>
               <div className="hero-actions">
                 <button className="button hero-primary" disabled={busy} onClick={() => showScreen("quiz")}><Zap size={16}/> Start practice <ArrowRight size={16}/></button>
-                <button className="button hero-secondary" disabled={busy} onClick={() => { setAskValue(""); setAnswer(undefined); setModal("ask"); }}><Sparkles size={16}/> Ask materials</button>
+                {!publicDemo && <button className="button hero-secondary" disabled={busy} onClick={() => { setAskValue(""); setAnswer(undefined); setModal("ask"); }}><Sparkles size={16}/> Ask materials</button>}
               </div>
             </div>
             <div className="hero-emblem" aria-hidden="true"><div/><div/><div/><Network size={77} strokeWidth={1.15}/></div>
@@ -285,17 +286,17 @@ export default function App() {
             <div className="workspace-side">
               <section className="panel materials-panel" aria-labelledby="materials-title">
                 <div className="panel-head"><div className="panel-title"><span className="tile-icon blue"><BookOpen size={17}/></span><div><h2 id="materials-title">Materials</h2><p>{mod.resources.length} {mod.resources.length === 1 ? "source" : "sources"} in this module</p></div></div>
-                  <button className="icon-button" aria-label="Add a source" title="Add a source" disabled={busy} onClick={() => setModal("capture")}><Plus size={19}/></button>
+                  {!publicDemo && <button className="icon-button" aria-label="Add a source" title="Add a source" disabled={busy} onClick={() => setModal("capture")}><Plus size={19}/></button>}
                 </div>
                 <SourceList resources={mod.resources} open={openResource}/>
-                <div className="panel-footer"><button className="button wide" disabled={busy || !mod.resources.some(item => item.extractionStatus === "done")} onClick={build}><Sparkles size={16}/> Build concept web</button></div>
+                {!publicDemo && <div className="panel-footer"><button className="button wide" disabled={busy || !mod.resources.some(item => item.extractionStatus === "done")} onClick={build}><Sparkles size={16}/> Build concept web</button></div>}
               </section>
-              {screen !== "plan" && <section className="plan-card" aria-labelledby="next-title"><span className="tile-icon"><CalendarDays size={19}/></span><div><h2 id="next-title">Plan your revision</h2><p>Set a daily study budget for {exam?.name?.toLowerCase() ?? "your exam"}.</p><button onClick={() => setScreen("plan")}>View plan <ArrowRight size={15}/></button></div></section>}
+              {!publicDemo && screen !== "plan" && <section className="plan-card" aria-labelledby="next-title"><span className="tile-icon"><CalendarDays size={19}/></span><div><h2 id="next-title">Plan your revision</h2><p>Set a daily study budget for {exam?.name?.toLowerCase() ?? "your exam"}.</p><button onClick={() => setScreen("plan")}>View plan <ArrowRight size={15}/></button></div></section>}
             </div>
           </div>
         </> : <section className="panel empty start-empty"><BookOpen size={32}/><h1>{loaded ? "Set up your study workspace" : "StudyWeave"}</h1>
           <p>{loaded ? "Create a course, exam, and module to start collecting materials." : error ? "Retry the connection to load your courses." : "Loading your workspace…"}</p>
-          {loaded && <button className="button primary" onClick={() => { setCreateKind(subject ? exam ? "modules" : "exams" : "subjects"); setModal("create"); }}><Plus size={17}/> {subject ? exam ? "Create module" : "Create exam" : "Create course"}</button>}
+          {loaded && !publicDemo && <button className="button primary" onClick={() => { setCreateKind(subject ? exam ? "modules" : "exams" : "subjects"); setModal("create"); }}><Plus size={17}/> {subject ? exam ? "Create module" : "Create exam" : "Create course"}</button>}
         </section>}
       </main>
     </div>
@@ -327,7 +328,7 @@ export default function App() {
       {"concept" in detail && <div className="workspace-form">
         <Readiness value={detail.concept.readiness} cleared={cleared.includes(detail.concept.moduleId)}/><p>{detail.concept.definition}</p>
         {gapCitations(detail.concept.evidence)}
-        {bestEvidence(detail.concept)?.startSec != null && <button className="button" onClick={() => { selectModule(detail.concept.moduleId, "captions"); setSeekTime(bestEvidence(detail.concept)?.startSec); setDetail(undefined); }}>Open lecture captions <ArrowRight size={16}/></button>}
+        {!publicDemo && bestEvidence(detail.concept)?.startSec != null && <button className="button" onClick={() => { selectModule(detail.concept.moduleId, "captions"); setSeekTime(bestEvidence(detail.concept)?.startSec); setDetail(undefined); }}>Open lecture captions <ArrowRight size={16}/></button>}
       </div>}
       {"edge" in detail && <div className="workspace-form"><span className="tag">{{ prerequisite: "Prerequisite", extends: "Builds on", contrasts: "Contrasts with" }[detail.edge.type]}</span>
         <h3>{currentGraph.nodes.find(item => item.id === detail.edge.from)?.name} → {currentGraph.nodes.find(item => item.id === detail.edge.to)?.name}</h3>
@@ -351,7 +352,7 @@ function SourceDetail({ source, evidence }: {source?: Resource; evidence?: Evide
   useEffect(() => { setPage(evidence?.page ?? pages[0]?.n); }, [evidence?.page, source?.id]);
   const selected = pages.find(item => item.n === page);
   const locator = page == null ? evidence : { resourceId: source?.id ?? "", page, quote: "", startSec: page === evidence?.page ? evidence.startSec : selected?.startSec };
-  const link = source && source.url ? resourceUrl(source, apiUrl, locator) : file && source?.type === "pdf" && page ? `${file}#page=${page}` : file;
+  const link = source && source.url && (!publicDemo || !source.url.startsWith("/api/")) ? resourceUrl(source, apiUrl, locator) : file && source?.type === "pdf" && page ? `${file}#page=${page}` : file;
   return <div className="workspace-form">
     {evidence && <><span className="tag">Page {evidence.page}</span><blockquote>“{evidence.quote}”</blockquote></>}
     {pages.length > 1 && <label>Source page<select value={page} onChange={event => setPage(Number(event.target.value))}>{pages.map(item => <option key={item.n} value={item.n}>{item.n}</option>)}</select></label>}

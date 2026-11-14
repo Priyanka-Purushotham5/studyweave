@@ -5,7 +5,8 @@ RUN npm --prefix web ci
 COPY web ./web
 COPY contracts ./contracts
 COPY fixtures ./fixtures
-ENV VITE_MOCK=0 VITE_API_URL=""
+ARG VITE_PUBLIC_DEMO=0
+ENV VITE_MOCK=0 VITE_API_URL="" VITE_PUBLIC_DEMO=${VITE_PUBLIC_DEMO}
 RUN npm --prefix web run build
 
 FROM caddy:2-alpine
