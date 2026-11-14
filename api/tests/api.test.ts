@@ -610,3 +610,86 @@ describe("demo upload and untrusted capture hardening", () => {
     expect(row.pages[0].text.startsWith("videotext")).toBe(true);
   });
 });
+
+describe("public demo security policy", () => {
+  it("allows only demo routes and rejects unsupported methods and sensitive endpoints", async () => {
+    const app = createApp(s, fake, { publicDemo: true, enableSeed: true }).app;
+    for (const path of ["/healthz", "/readyz", "/api/tree", "/api/graph"]) {
+      expect((await request(app).get(path)).status, path).toBe(200);
+    }
+    for (const path of [
+      "/api/dev/seed",
+      "/api/subjects",
+      "/api/exams",
+      "/api/modules",
+      "/api/resources",
+      "/api/resources/upload",
+      "/api/modules/m_backprop/build",
+      "/api/ask",
+      "/api/lectures",
+      "/api/lectures/x/corrections",
+      "/api/reset",
+      "/api/admin",
+    ]) {
+      expect((await request(app).post(path).send({})).status, path).toBe(404);
+    }
+    for (const path of [
+      "/api/openapi.json",
+      "/api/resources/x/file",
+      "/api/resources/x/status",
+      "/api/jobs/x",
+      "/api/revision-plan",
+      "/api/revision-path",
+      "/api/lectures/x",
+      "/api/lectures/x/audio",
+    ]) {
+      expect((await request(app).get(path)).status, path).toBe(404);
+    }
+    for (const method of ["post", "put", "patch", "delete"] as const) {
+      expect((await request(app)[method]("/api/tree")).status).toBe(404);
+    }
+    expect((await request(app).get("/api/attempts")).status).toBe(404);
+    expect((await request(app).post("/api/attempts").send({})).status).toBe(
+      400,
+    );
+  });
+
+  it("uses only public fixtures without AI calls or database writes", async () => {
+    const app = createApp(s, fake, { publicDemo: true }).app;
+    const before = await s.db.listCollections().toArray();
+    const result = await request(app)
+      .post("/api/questions/next")
+      .send({ moduleId: "m_backprop", n: 1 });
+    expect(result.status).toBe(200);
+    const question = result.body.questions[0];
+    expect(question).toBeDefined();
+    const attempt = await request(app).post("/api/attempts").send({
+      questionId: question.id,
+      conceptId: question.conceptIds[0],
+      correct: false,
+    });
+    expect(attempt.status).toBe(200);
+    expect(attempt.body.trace.rootConceptId).toBeTruthy();
+    expect(await s.db.listCollections().toArray()).toEqual(before);
+    expect(await s.all("attempts")).toHaveLength(0);
+    expect(fake.calls).toBe(0);
+    expect(
+      (
+        await request(app).post("/api/attempts").send({
+          questionId: "private",
+          conceptId: question.conceptIds[0],
+          correct: false,
+        })
+      ).status,
+    ).toBe(404);
+  });
+
+  it("limits anonymous interactions", async () => {
+    const app = createApp(s, fake, { publicDemo: true }).app;
+    for (let i = 0; i < 60; i++)
+      await request(app).post("/api/attempts").send({});
+    expect((await request(app).post("/api/attempts").send({})).status).toBe(
+      429,
+    );
+  });
+});

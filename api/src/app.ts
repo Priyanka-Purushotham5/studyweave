@@ -16,6 +16,7 @@ export function createApp(
   client: AiClient,
   options: {
     enableSeed?: boolean;
+    publicDemo?: boolean;
     origin?: string;
     finder?: NeighborFinder;
   } = {},
@@ -24,8 +25,36 @@ export function createApp(
   app.disable("x-powered-by");
   app.use(helmet());
   if (options.origin) app.use(cors({ origin: options.origin }));
+  if (options.publicDemo) {
+    let windowStarted = Date.now();
+    let interactions = 0;
+    app.use((req, res, next) => {
+      const allowed =
+        (req.method === "GET" &&
+          ["/healthz", "/readyz", "/api/tree", "/api/graph"].includes(
+            req.path,
+          )) ||
+        (req.method === "POST" &&
+          ["/api/questions/next", "/api/attempts"].includes(req.path));
+      if (!allowed)
+        return res
+          .status(404)
+          .json({ error: { code: "not_found", message: "Route not found" } });
+      if (req.method === "POST") {
+        if (Date.now() - windowStarted >= 60_000) {
+          windowStarted = Date.now();
+          interactions = 0;
+        }
+        if (++interactions > 60)
+          return res.status(429).json({
+            error: { code: "rate_limited", message: "Too many requests" },
+          });
+      }
+      next();
+    });
+  }
   app.use(responseValidation);
-  app.use(express.json({ limit: "3mb" }));
+  app.use(express.json({ limit: options.publicDemo ? "16kb" : "3mb" }));
   const jobs = new Jobs(store);
   const ai = new CachedAiClient(client, store);
   app.get("/healthz", (_req, res) => res.json({ ok: true }));
@@ -42,7 +71,8 @@ export function createApp(
       ai,
       jobs,
       options.finder ?? new CosineNeighborFinder(),
-      options.enableSeed,
+      options.enableSeed && !options.publicDemo,
+      options.publicDemo,
     ),
   );
   app.use((_req, _res, next) =>

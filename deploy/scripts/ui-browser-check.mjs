@@ -21,6 +21,14 @@ page.on("response", (r) => {
 });
 try {
   await page.goto(base, { waitUntil: "networkidle" });
+  if (process.env.UI_EXPECT_PUBLIC === "1") {
+    for (const [method, path] of [["GET", "/readyz"], ["POST", "/api/dev/seed"], ["POST", "/api/ask"], ["DELETE", "/api/tree"], ["GET", "/api/openapi.json"]]) {
+      assert.equal((await page.request.fetch(`${base}${path}`, { method })).status(), 404, `unexpected access: ${method} ${path}`);
+    }
+    for (const name of ["Add material", "Add a source", "Build concept web", "Ask materials", "Lecture captions", "Revision plan", "Create course, exam, or module"]) {
+      assert.equal(await page.getByRole("button", { name, exact: true }).count(), 0, `unexpected public control: ${name}`);
+    }
+  }
   await page
     .getByRole("heading", { name: "Backpropagation", exact: true })
     .waitFor();
@@ -65,6 +73,8 @@ try {
   });
   await heading.waitFor();
   const gap = await heading.innerText();
+  if (process.env.UI_EXPECT_PUBLIC === "1")
+    assert.equal(await page.getByRole("button", { name: "See revision path" }).count(), 0);
   assert((await page.locator(".trace-node").count()) >= 1);
   assert(
     calls.some((x) => x.path === "/api/attempts" && x.status === 200),

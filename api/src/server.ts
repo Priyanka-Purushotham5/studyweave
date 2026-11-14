@@ -4,7 +4,9 @@ import { FakeAiClient, HttpAiClient } from "./ai/aiClient.js";
 import { createApp } from "./app.js";
 import { AtlasNeighborFinder } from "./services/neighbors.js";
 const c = config();
-const { store, client } = await connect(c.uri, c.db);
+const { store, client } = await connect(c.uri, c.db, {
+  readOnly: c.publicDemo,
+});
 const { app, jobs } = createApp(
   store,
   c.fake ? new FakeAiClient() : new HttpAiClient(c.aiUrl),
@@ -16,7 +18,7 @@ const { app, jobs } = createApp(
         : undefined,
   },
 );
-await jobs.recover();
+if (!c.publicDemo) await jobs.recover();
 const server = app.listen(c.port, process.env.HOST ?? "0.0.0.0", () =>
   console.log(`StudyWeave API listening on ${c.port}`),
 );

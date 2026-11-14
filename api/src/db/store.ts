@@ -79,12 +79,16 @@ export class Store {
       .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   }
 }
-export async function connect(uri: string, name = "studyweave") {
+export async function connect(
+  uri: string,
+  name = "studyweave",
+  options: { readOnly?: boolean } = {},
+) {
   const client = new MongoClient(uri, { serverSelectionTimeoutMS: 10000 });
   try {
     await client.connect();
     const store = new Store(client.db(name));
-    await store.indexes();
+    if (!options.readOnly) await store.indexes();
     return { store, client };
   } catch (error) {
     await client.close();

@@ -1,3 +1,4 @@
+import { fixture } from "./sharedFixtures.js";
 import { publicConcept } from "./public.js";
 import { servableQuestion } from "./questions.js";
 import { randomUUID } from "node:crypto";
@@ -27,7 +28,13 @@ export class Study {
     private s: Store,
     private ai: AiClient,
   ) {}
-  async graph(subjectId?: string) {
+  async graph(subjectId?: string, publicDemo = false) {
+    if (publicDemo) {
+      const subjects = fixture("tree").subjects;
+      return subjectId && !subjects.some((s: any) => s.id === subjectId)
+        ? { nodes: [], edges: [] }
+        : fixture("graph");
+    }
     let cs = await this.s.all<Concept>("concepts");
     if (subjectId) {
       const exams = await this.s.all("exams", { subjectId });
@@ -43,7 +50,27 @@ export class Study {
       ),
     };
   }
-  async next(filter: QuestionFilter) {
+  async next(filter: QuestionFilter, storedOnly = false) {
+    if (storedOnly) {
+      const concepts: Concept[] = fixture("graph").nodes;
+      if (!concepts.some((c) => c.moduleId === filter.moduleId))
+        throw new ApiError("not_found", "Module not found");
+      if (
+        filter.conceptId &&
+        !concepts.some(
+          (c) => c.id === filter.conceptId && c.moduleId === filter.moduleId,
+        )
+      )
+        throw new ApiError("not_found", "Concept not found in this module");
+      return {
+        questions: selectQuestions(
+          fixture("questions").questions,
+          concepts,
+          [],
+          filter,
+        ),
+      };
+    }
     requireValue(
       await this.s.get("modules", filter.moduleId),
       "Module not found",
@@ -64,7 +91,7 @@ export class Study {
       );
     let qs = selectQuestions(await stored(), cs, attempts, filter);
     // A down must not prevent already-stored questions from being served.
-    if (qs.length < filter.n) {
+    if (!storedOnly && qs.length < filter.n) {
       for (const c of cs
         .filter(
           (c) =>
@@ -92,11 +119,37 @@ export class Study {
     }
     return { questions: qs };
   }
-  async attempt(body: {
-    questionId: string;
-    conceptId: string;
-    correct: boolean;
-  }) {
+  async attempt(
+    body: {
+      questionId: string;
+      conceptId: string;
+      correct: boolean;
+    },
+    ephemeral = false,
+  ) {
+    if (ephemeral) {
+      const { nodes: concepts, edges } = fixture("graph");
+      const q: Question | undefined = fixture("questions").questions.find(
+        (x: Question) => x.id === body.questionId,
+      );
+      const c: Concept | undefined = concepts.find(
+        (x: Concept) => x.id === body.conceptId,
+      );
+      if (!q || !c)
+        throw new ApiError("not_found", "Question or concept not found");
+      if (!q.verified || !q.conceptIds.includes(c.id))
+        throw new ApiError(
+          "bad_request",
+          "Question does not test this concept",
+        );
+      return {
+        readiness: Object.fromEntries(
+          concepts.map((x: Concept) => [x.id, x.readiness]),
+        ),
+        trace: body.correct ? null : trace(c.id, concepts, edges, []),
+        xp: body.correct ? 10 : 0,
+      };
+    }
     const q = requireValue(
       await this.s.get<Question>("questions", body.questionId),
       "Question not found",

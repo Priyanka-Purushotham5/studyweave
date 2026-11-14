@@ -1,3 +1,4 @@
+import { fixture } from "../services/sharedFixtures.js";
 import { openapi } from "../contracts/openapi.js";
 import { MAX_UPLOAD_BYTES } from "../services/uploads.js";
 import {
@@ -30,6 +31,7 @@ export function routes(
   jobs: Jobs,
   finder: NeighborFinder,
   enableSeed = false,
+  publicDemo = false,
 ) {
   const r = express.Router();
   r.get("/openapi.json", (_req, res) => res.json(openapi));
@@ -65,11 +67,15 @@ export function routes(
     "/tree",
     handle(async (_q: any, res: any) =>
       res.json(
-        tree(
-          ...((await Promise.all(
-            ["subjects", "exams", "modules", "resources"].map((n) => s.all(n)),
-          )) as [any[], any[], any[], any[]]),
-        ),
+        publicDemo
+          ? fixture("tree")
+          : tree(
+              ...((await Promise.all(
+                ["subjects", "exams", "modules", "resources"].map((n) =>
+                  s.all(n),
+                ),
+              )) as [any[], any[], any[], any[]]),
+            ),
       ),
     ),
   );
@@ -210,6 +216,7 @@ export function routes(
           typeof req.query.subjectId === "string"
             ? req.query.subjectId
             : undefined,
+          publicDemo,
         ),
       );
     }),
@@ -218,14 +225,14 @@ export function routes(
     "/questions/next",
     validate("questions"),
     handle(async (req: any, res: any) => {
-      res.json(await study.next(req.body));
+      res.json(await study.next(req.body, publicDemo));
     }),
   );
   r.post(
     "/attempts",
     validate("attempt"),
     handle(async (req: any, res: any) => {
-      res.json(await study.attempt(req.body));
+      res.json(await study.attempt(req.body, publicDemo));
     }),
   );
   r.post(

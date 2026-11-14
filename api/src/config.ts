@@ -16,5 +16,6 @@ export function config(env: NodeJS.ProcessEnv = process.env) {
     aiUrl: env.AI_SERVICE_URL ?? "http://localhost:8001",
     origin: env.CORS_ORIGIN,
     enableSeed: env.ENABLE_DEV_SEED === "true",
+    publicDemo: env.PUBLIC_DEMO === "true",
   };
 }
