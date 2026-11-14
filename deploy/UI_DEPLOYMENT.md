@@ -25,3 +25,24 @@ The browser check opens the actual Docker-built UI via Caddy, confirms tree and 
 The owned domain's root A record must point to the Vultr server. Remove parking records only after confirming they are not needed. Ensure the host and Vultr firewalls allow TCP 80/443; API and AI ports remain unpublished. Configure an actual `API_USERNAME` and Caddy bcrypt `API_PASSWORD_HASH` in the ignored server environment. Caddy automatically obtains the public certificate after DNS resolves and ports are reachable. Do not use the local test credentials for the deployed app.
 
 Once DNS and credentials are ready, rebuild with `docker compose --env-file deploy/.env -f deploy/docker-compose.yml up --build -d` and run the HTTPS smoke check. The existing Atlas database does not need reseeding. Real Gemini remains a separate key/quota decision.
+
+## Existing Vultr host with host-level Caddy
+
+The current server already uses host Caddy for `api.studynova.ink`. Keep it as the only public listener. After the PR is approved and merged, the B-owned override `docker-compose.host-caddy.yml` binds the new containerized UI/Caddy to **127.0.0.1:3006**; it does not publish 80 or 443. The container proxies its `/api/*` to the existing API over the private Docker network. Host Caddy then adds the separate site block shown in `host-caddy-site.example`; leave the API site unchanged.
+
+Before any production change, obtain the requested approval for the chosen Basic authentication credentials/policy, the Caddy reload, and any operation that may interrupt service. Save private credentials only in the existing root-only server environment file; never commit or print them. Validate the complete host Caddyfile and back it up before reloading. Do not reseed Atlas or remove production volumes.
+
+Once DNS points to the server and approval is given, run from the reviewed production checkout:
+
+```sh
+# Build and start ONLY the new UI service; do not recreate A/B.
+docker compose --env-file deploy/.env -f deploy/docker-compose.yml -f deploy/docker-compose.host-caddy.yml up --no-deps --build -d caddy
+# Confirm the UI port is loopback-only and the existing API health still works.
+ss -lnt
+curl --fail https://api.studynova.ink/healthz
+# After adding the separate site block, validate before the approved reload:
+caddy validate --config /etc/caddy/Caddyfile
+systemctl reload caddy
+```
+
+For rollback, restore the pre-change host Caddyfile backup, validate it, and reload host Caddy after approval. The previous A/B containers, production volume and Atlas data remain in place. Stopping the new UI service is a separate reversible action; never run `docker compose down -v` against production.
