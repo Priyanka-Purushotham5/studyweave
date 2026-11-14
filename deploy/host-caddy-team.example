@@ -1,8 +1,15 @@
-# Keep the existing restricted api.studynova.ink site unchanged.
-# This site serves the full shared team workspace over HTTPS.
-studynova.ink {
+# Shared team login, stored privately outside the repository.
+(team_auth) {
     basic_auth {
         import /etc/caddy/studynova-team-auth.caddy
     }
+}
+studynova.ink {
+    import team_auth
     reverse_proxy 127.0.0.1:3007
+}
+# Avoid a second API origin and prevent bypass of the website's login.
+api.studynova.ink {
+    import team_auth
+    respond 404
 }

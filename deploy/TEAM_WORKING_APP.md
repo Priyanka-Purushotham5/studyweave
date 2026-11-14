@@ -1,9 +1,25 @@
-# Team working application
+# Single authenticated team website
 
-The team site is the existing full UI and API, served over HTTPS behind Caddy Basic authentication. It is one shared workspace, not per-user accounts or tenant isolation. Keep `api.studynova.ink` on its restricted public-demo policy. The full API and AI service remain on private networks and loopback ports.
+`https://studynova.ink` serves the existing full UI and API over HTTPS behind one host-Caddy Basic-auth layer. Three team members may use the same login simultaneously. They share one Atlas workspace and can change each other's data; this does not provide individual accounts or per-user isolation. `/api/*` travels through the same authenticated website. `api.studynova.ink` requires the same login, then returns 404 for all requests, so it cannot bypass the website's policy. Module A is internal; Module B and the UI container bind to loopback only. Production seeding is disabled.
 
-On the server, an operator can run `python3 /tmp/studynova-configure-team-secrets.py` to enter a shared username, a strong password and a Gemini API key without echoing the password or key. The helper stores a bcrypt hash in `/etc/caddy/studynova-team-auth.caddy` (root:caddy, 0640) and adds the key to the root-only deployment environment. It does not change running services or enable real Gemini.
+## Shared credentials (operator action)
 
-After secrets are configured, preserve a backup of the host Caddyfile, add Basic authentication to the root site using `host-caddy-team.example`, validate the entire candidate with `caddy validate --adapter caddyfile`, then reload Caddy. Reconfigure Module A with `FAKE_GEMINI=0` and the saved Gemini key; only Module A receives the key. Preserve the existing Atlas database and all volumes. Verify anonymous requests receive 401, valid team access works, the public API policy remains restricted, and real AI flows work with a small test document. Real Gemini may incur quota usage or charges. Never print or commit credentials.
+After copying `deploy/scripts/configure-team-secrets.py` from the reviewed release to `/tmp/studynova-configure-team-secrets.py` on the server, run this from your own terminal:
 
-Roll back by restoring and validating the backed-up host Caddyfile and reloading it; restore `FAKE_GEMINI=1` in the server environment and recreate only the AI service if necessary. Coordinate the resulting brief AI interruption. Never delete the database or volumes.
+```sh
+ssh -t -i ~/.ssh/studynova_vultr root@155.138.234.110 'python3 /tmp/studynova-configure-team-secrets.py'
+```
+
+Choose a username and enter a strong shared password twice; the password is not echoed. The helper stores only a bcrypt hash in `/etc/caddy/studynova-team-auth.caddy` (root:caddy, 0640). It does not modify running services, Atlas, the Gemini key or fake-mode setting. Share the login through a secure channel; never paste it into chat, logs or GitHub.
+
+## Approved rollout and rollback
+
+Before production changes, get the owner's explicit approval, back up the entire host Caddyfile and record image IDs. Save the existing environment file and volumes. Deploy the `docker-compose.yml` plus `docker-compose.single-site.yml` stack with `FAKE_GEMINI=1`; recreate only services that need updating. Build the UI with Node 22 in Docker. Replace the existing host sites with the equivalent of `host-caddy-team.example` while preserving unrelated directives, validate the full candidate with `caddy validate --adapter caddyfile`, and reload only if it succeeds. Verify 401 without credentials and with an incorrect password on both sites; the main site returns the application after successful login, while the API subdomain returns 404 even after login. Test full workflows using isolated test data, not existing records. No production DB or Docker volume deletion is required.
+
+Rollback by restoring the saved Caddyfile, validating and reloading it, and restoring recorded images and Compose settings if needed. The prior policy is an anonymous fixture demo, so rollback changes access accordingly. Never delete volumes or Atlas data.
+
+Full mode uses a global in-process 180 POST-per-minute API limit shared by the team. It resets on restart, is not distributed, and does not limit unauthenticated Basic-auth attempts at host Caddy. Apply network-level protections before wider deployment. Secure credentials are essential: all signed-in teammates have the same access, and Basic authentication does not provide individual revocation or auditing.
+
+## Real Gemini
+
+Keep `FAKE_GEMINI=1`. AI extraction, generated questions, material Q&A, embeddings and lecture transcription rely on Module A; fake mode uses deterministic fixtures and cannot establish real-model output quality on arbitrary material. Before real mode is enabled, confirm the key, supported model, quota, spend limits and actual end-to-end behavior in a separate approved test. Do not log or commit credentials.

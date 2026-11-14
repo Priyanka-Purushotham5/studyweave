@@ -17,5 +17,6 @@ export function config(env: NodeJS.ProcessEnv = process.env) {
     origin: env.CORS_ORIGIN,
     enableSeed: env.ENABLE_DEV_SEED === "true",
     publicDemo: env.PUBLIC_DEMO === "true",
+    teamMode: env.TEAM_MODE === "true",
   };
 }

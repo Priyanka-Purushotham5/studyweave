@@ -17,6 +17,7 @@ export function createApp(
   options: {
     enableSeed?: boolean;
     publicDemo?: boolean;
+    teamMode?: boolean;
     origin?: string;
     finder?: NeighborFinder;
   } = {},
@@ -50,6 +51,22 @@ export function createApp(
             error: { code: "rate_limited", message: "Too many requests" },
           });
       }
+      next();
+    });
+  }
+  if (options.teamMode && !options.publicDemo) {
+    let windowStarted = Date.now();
+    let interactions = 0;
+    app.use((req, res, next) => {
+      if (req.method !== "POST" || !req.path.startsWith("/api/")) return next();
+      if (Date.now() - windowStarted >= 60_000) {
+        windowStarted = Date.now();
+        interactions = 0;
+      }
+      if (++interactions > 180)
+        return res.status(429).json({
+          error: { code: "rate_limited", message: "Too many requests" },
+        });
       next();
     });
   }

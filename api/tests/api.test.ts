@@ -693,3 +693,19 @@ describe("public demo security policy", () => {
     );
   });
 });
+
+describe("team deployment request limits", () => {
+  it("rate limits API writes without disabling normal API routes", async () => {
+    const app = createApp(s, fake, { teamMode: true }).app;
+    expect((await request(app).get("/api/tree")).status).toBe(200);
+    expect(
+      (await request(app).post("/api/subjects").send({ name: "Test" })).status,
+    ).toBe(201);
+    for (let i = 1; i < 180; i++)
+      await request(app).post("/api/attempts").send({});
+    expect((await request(app).post("/api/attempts").send({})).status).toBe(
+      429,
+    );
+    expect((await request(app).get("/api/tree")).status).toBe(200);
+  });
+});

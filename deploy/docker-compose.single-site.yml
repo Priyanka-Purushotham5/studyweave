@@ -1,0 +1,23 @@
+# Combine with docker-compose.yml on the existing host. Host Caddy is the sole
+# public listener and applies HTTPS Basic authentication to both hostnames.
+services:
+  api:
+    environment:
+      TEAM_MODE: "true"
+      PUBLIC_DEMO: "false"
+      ENABLE_DEV_SEED: "false"
+    ports:
+      - "127.0.0.1:3003:3000"
+  caddy-team:
+    image: studynova-team-web:local
+    build:
+      context: ..
+      dockerfile: deploy/Web.Dockerfile
+      args:
+        VITE_PUBLIC_DEMO: "0"
+    restart: unless-stopped
+    networks: [backend]
+    ports:
+      - "127.0.0.1:3007:3007"
+    volumes:
+      - ./Caddyfile.team-tunnel:/etc/caddy/Caddyfile:ro

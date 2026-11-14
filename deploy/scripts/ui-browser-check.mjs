@@ -8,7 +8,7 @@ const { chromium } = require("playwright");
 const base = process.env.UI_TEST_ORIGIN ?? "http://localhost:3006";
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({
-  httpCredentials: { username: "demo", password: "local-test-only" },
+  httpCredentials: { username: process.env.UI_TEST_USERNAME ?? "demo", password: process.env.UI_TEST_PASSWORD ?? "local-test-only" },
 });
 const page = await context.newPage();
 const errors = [];
