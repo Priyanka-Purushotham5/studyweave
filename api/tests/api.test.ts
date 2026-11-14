@@ -1,5 +1,7 @@
 import { beforeAll, afterAll, beforeEach, describe, it, expect } from "vitest";
 import request from "supertest";
+import { MAX_UPLOAD_BYTES } from "../src/services/uploads.js";
+import { MAX_PAGE_CHARACTERS } from "../src/services/text.js";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { weights } from "../src/services/pipeline.js";
@@ -92,7 +94,7 @@ describe("Module B acceptance integration", () => {
       .post("/api/resources/upload")
       .field("moduleId", "m_backprop")
       .field("tag", "notes")
-      .attach("file", Buffer.from("%PDF fixture"), "slides.pdf");
+      .attach("file", Buffer.from("%PDF-1.7 fixture"), "slides.pdf");
     expect(res.status).toBe(201);
     expect(res.body.extractionStatus).toBe("pending");
     await ctx.jobs.drain();
@@ -103,7 +105,7 @@ describe("Module B acceptance integration", () => {
       .post("/api/resources/upload")
       .field("moduleId", "m_backprop")
       .field("tag", "notes")
-      .attach("file", Buffer.from("%PDF fixture"), "slides.pdf");
+      .attach("file", Buffer.from("%PDF-1.7 fixture"), "slides.pdf");
     expect(again.body.id).toBe(res.body.id);
   });
   it("failed scanned extraction retains resource with plain explanation", async () => {
@@ -111,7 +113,7 @@ describe("Module B acceptance integration", () => {
       .post("/api/resources/upload")
       .field("moduleId", "m_backprop")
       .field("tag", "notes")
-      .attach("file", Buffer.from("SCANNED"), "scan.pdf");
+      .attach("file", Buffer.from("%PDF-1.7 SCANNED"), "scan.pdf");
     await ctx.jobs.drain();
     expect((await s.get("resources", res.body.id)).extractionStatus).toBe(
       "unsupported",
@@ -360,11 +362,11 @@ describe("capture persistence and asynchronous boundary", () => {
       .post("/api/resources/upload")
       .field("moduleId", "m_backprop")
       .field("tag", "notes")
-      .attach("file", Buffer.from("%PDF original content"), "source.pdf");
+      .attach("file", Buffer.from("%PDF-1.7 original content"), "source.pdf");
     await ctx.jobs.drain();
     const full = await request(ctx.app).get(`/api/resources/${r.body.id}/file`);
     expect(full.status).toBe(200);
-    expect(Buffer.from(full.body).toString()).toBe("%PDF original content");
+    expect(Buffer.from(full.body).toString()).toBe("%PDF-1.7 original content");
     const part = await request(ctx.app)
       .get(`/api/resources/${r.body.id}/file`)
       .set("Range", "bytes=0-3");
@@ -385,7 +387,7 @@ describe("capture persistence and asynchronous boundary", () => {
       .post("/api/resources/upload")
       .field("moduleId", "m_backprop")
       .field("tag", "notes")
-      .attach("file", Buffer.from("%PDF delayed"), "delayed.pdf");
+      .attach("file", Buffer.from("%PDF-1.7 delayed"), "delayed.pdf");
     expect(r.body.extractionStatus).toBe("pending");
     expect((await s.get("resources", r.body.id)).extractionStatus).toBe(
       "pending",
@@ -413,7 +415,7 @@ it("deployment smoke script passes against local seeded HTTP server", async () =
     const port = (server.address() as { port: number }).port;
     const { stdout } = await promisify(execFile)(
       "bash",
-      ["../deploy/scripts/smoke.sh", `http://127.0.0.1:${port}`],
+      ["../scripts/smoke.sh", `http://127.0.0.1:${port}`],
       { env: { ...process.env, ALLOW_HTTP: "1" } },
     );
     expect(stdout).toContain("Smoke checks passed");
@@ -428,7 +430,7 @@ it("resubmitting failed extraction retries without duplicating original files", 
       .post("/api/resources/upload")
       .field("moduleId", "m_backprop")
       .field("tag", "notes")
-      .attach("file", Buffer.from("SCANNED"), "retry.pdf");
+      .attach("file", Buffer.from("%PDF-1.7 SCANNED"), "retry.pdf");
   const first = await upload();
   await ctx.jobs.drain();
   expect((await s.get("resources", first.body.id)).extractionStatus).toBe(
@@ -484,11 +486,120 @@ it("uploading a second tagged paper raises graph weights without a rebuild", asy
       .post("/api/resources/upload")
       .field("moduleId", "m_backprop")
       .field("tag", "past_paper")
-      .attach("file", Buffer.from(`%PDF paper ${i}`), `paper${i}.pdf`);
+      .attach("file", Buffer.from(`%PDF-1.7 paper ${i}`), `paper${i}.pdf`);
     await ctx.jobs.drain();
     const graph = await request(ctx.app).get("/api/graph");
     expect(
       graph.body.nodes.find((c: any) => c.id === "c_chain_rule").examWeight,
     ).toBe(i + 1);
   }
+});
+
+describe("demo upload and untrusted capture hardening", () => {
+  beforeEach(async () => seed(s));
+  it("rejects forged signatures before persistence or AI work", async () => {
+    const before = fake.calls;
+    for (const [name, data] of [
+      ["bad.pdf", "<html>fake</html>"],
+      ["bad.pptx", "PK fake"],
+      ["bad.exe", "%PDF-1.7 fake"],
+    ]) {
+      const result = await request(ctx.app)
+        .post("/api/resources/upload")
+        .field("moduleId", "m_backprop")
+        .field("tag", "notes")
+        .attach("file", Buffer.from(data), name);
+      expect(result.status).toBe(400);
+      expect(result.body.error.code).toBe("bad_request");
+    }
+    expect(await s.db.collection("fs.files").countDocuments()).toBe(0);
+    expect(fake.calls).toBe(before);
+  });
+  it("rejects uploads above 20 MB for both documents and lectures", async () => {
+    const data = Buffer.alloc(MAX_UPLOAD_BYTES + 1);
+    data.write("%PDF-1.7\n");
+    for (const [endpoint, field] of [
+      ["/api/resources/upload", "file"],
+      ["/api/lectures", "audio"],
+    ]) {
+      const result = await request(ctx.app)
+        .post(endpoint)
+        .field("moduleId", "m_backprop")
+        .field("tag", "notes")
+        .field("slidesResourceId", "r_slides")
+        .attach(field, data, "large.pdf");
+      expect(result.status).toBe(400);
+      expect(result.body.error.code).toBe("bad_request");
+    }
+    expect(await s.db.collection("fs.files").countDocuments()).toBe(0);
+  });
+  it("accepts a document at exactly 20 MB", async () => {
+    const data = Buffer.alloc(MAX_UPLOAD_BYTES, 32);
+    data.write("%PDF-1.7\n");
+    const result = await request(ctx.app)
+      .post("/api/resources/upload")
+      .field("moduleId", "m_backprop")
+      .field("tag", "notes")
+      .attach("file", data, "boundary.pdf");
+    expect(result.status).toBe(201);
+    await ctx.jobs.drain();
+    expect((await s.get("resources", result.body.id)).extractionStatus).toBe(
+      "done",
+    );
+  });
+  it("sanitizes extension capture before splitting and storing", async () => {
+    const result = await request(ctx.app)
+      .post("/api/resources")
+      .send({
+        moduleId: "m_backprop",
+        type: "web",
+        url: "https://8.8.8.8/demo",
+        title: "Clean\u200btitle",
+        text: "a\0\u200bb" + "z".repeat(5000),
+      });
+    expect(result.status).toBe(201);
+    await ctx.jobs.drain();
+    const row = await s.get("resources", result.body.id);
+    expect(row.title).toBe("Cleantitle");
+    expect(row.pages.map((p: any) => p.text).join("")).toBe(
+      "ab" + "z".repeat(5000),
+    );
+    expect(
+      row.pages.every((p: any) => p.text.length <= MAX_PAGE_CHARACTERS),
+    ).toBe(true);
+  });
+  it("sanitizes and caps document extraction and its persistent AI cache", async () => {
+    fake.upload = async () => ({
+      pages: [
+        { n: 1, text: "a\u200b\0b" + "x".repeat(MAX_PAGE_CHARACTERS + 500) },
+      ],
+    });
+    const result = await request(ctx.app)
+      .post("/api/resources/upload")
+      .field("moduleId", "m_backprop")
+      .field("tag", "notes")
+      .attach("file", Buffer.from("%PDF-1.7 content"), "dirty.pdf");
+    await ctx.jobs.drain();
+    const row = await s.get("resources", result.body.id);
+    expect(row.pages[0].text).toHaveLength(MAX_PAGE_CHARACTERS);
+    expect(row.pages[0].text.startsWith("ab")).toBe(true);
+    const cached = (await s.all("cache"))[0];
+    expect(cached.value.pages[0].text).toBe(row.pages[0].text);
+  });
+  it("sanitizes YouTube text returned by A", async () => {
+    fake.call = async () => ({
+      pages: [
+        { n: 1, text: "video\u200b\0text" + "x".repeat(MAX_PAGE_CHARACTERS) },
+      ],
+    });
+    const result = await request(ctx.app).post("/api/resources").send({
+      moduleId: "m_backprop",
+      type: "youtube",
+      url: "https://8.8.8.8/video",
+    });
+    await ctx.jobs.drain();
+    const row = await s.get("resources", result.body.id);
+    expect(row.pages[0].text).toHaveLength(MAX_PAGE_CHARACTERS);
+    expect(row.pages[0].text.startsWith("videotext")).toBe(true);
+  });
 });

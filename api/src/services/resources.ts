@@ -1,3 +1,5 @@
+import { sanitizeText, MAX_CAPTURE_CHARACTERS } from "./text.js";
+import { validateDocument } from "./uploads.js";
 import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { request as httpRequest } from "node:http";
@@ -10,6 +12,7 @@ import { Jobs } from "./jobs.js";
 import { weights } from "./pipeline.js";
 import { ApiError, requireValue } from "./errors.js";
 export function splitPages(text: string) {
+  text = sanitizeText(text, MAX_CAPTURE_CHARACTERS);
   const result = [];
   for (let i = 0; i < text.length; i += 2000)
     result.push({ n: result.length + 1, text: text.slice(i, i + 2000) });
@@ -116,6 +119,16 @@ export class Resources {
     private web = fetchText,
   ) {}
   async save(body: any, file?: { buffer: Buffer; originalname: string }) {
+    if (file) await validateDocument(file.buffer, file.originalname);
+    body = {
+      ...body,
+      ...(typeof body.text === "string"
+        ? { text: sanitizeText(body.text, MAX_CAPTURE_CHARACTERS) }
+        : {}),
+      ...(typeof body.title === "string"
+        ? { title: sanitizeText(body.title, 2000) }
+        : {}),
+    };
     requireValue(
       await this.s.get("modules", body.moduleId),
       "Module not found",
@@ -153,7 +166,7 @@ export class Resources {
           ? "pptx"
           : "pdf"
         : body.type,
-      title: body.title ?? file?.originalname ?? body.url,
+      title: sanitizeText(body.title ?? file?.originalname ?? body.url, 2000),
       hash: digest,
       pages: [],
       extractionStatus: "pending",
@@ -191,7 +204,11 @@ export class Resources {
           throw new Error("No supported text could be extracted");
         await this.s.put("resources", {
           ...row,
-          pages: result.pages.map((p: any) => ({ ...p, resourceId: id })),
+          pages: result.pages.map((p: any) => ({
+            ...p,
+            text: sanitizeText(p.text),
+            resourceId: id,
+          })),
           extractionStatus: "done",
         });
         if (["past_paper", "model_paper"].includes(body.tag))

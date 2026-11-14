@@ -1,3 +1,4 @@
+import { sanitizeCapturedValue } from "../services/text.js";
 import { createHash } from "node:crypto";
 import { Store } from "../db/store.js";
 import { ApiError } from "../services/errors.js";
@@ -246,12 +247,13 @@ export class CachedAiClient implements AiClient {
   ) {}
   private async cached(id: string, fn: () => Promise<any>) {
     const row = await this.store.get("cache", id);
-    if (row && new Date(row.expiresAt).getTime() > Date.now()) return row.value;
+    if (row && new Date(row.expiresAt).getTime() > Date.now())
+      return sanitizeCapturedValue(row.value);
     if (this.inflight.has(id)) return this.inflight.get(id);
     const p = (async () => {
       for (let i = 0; ; i++) {
         try {
-          const value = await fn();
+          const value = sanitizeCapturedValue(await fn());
           await this.store.put("cache", {
             id,
             value,

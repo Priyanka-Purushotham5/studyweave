@@ -1,3 +1,5 @@
+import { validateUploadSize } from "./uploads.js";
+import { sanitizeText } from "./text.js";
 import { randomUUID } from "node:crypto";
 import { Store } from "../db/store.js";
 import type { AiClient } from "../ai/aiClient.js";
@@ -16,6 +18,7 @@ export class Lectures {
     buffer: Buffer,
     filename: string,
   ) {
+    validateUploadSize(buffer);
     requireValue<any>(
       await this.s.get<any>("modules", moduleId),
       "Module not found",
@@ -52,7 +55,11 @@ export class Lectures {
       try {
         const glossary = (
           await this.ai.call("/v1/glossary", { pages: slides.pages })
-        ).terms;
+        ).terms.map((term: any) => ({
+          ...term,
+          term: sanitizeText(term.term),
+          definition: sanitizeText(term.definition),
+        }));
         const corrections = await this.s.all("corrections", { moduleId });
         const transcribed = await this.ai.upload(
           "/v1/transcribe",
@@ -63,6 +70,10 @@ export class Lectures {
             hints: JSON.stringify(corrections.filter((c) => c.count >= 2)),
           },
         );
+        transcribed.words = transcribed.words.map((word: any) => ({
+          ...word,
+          w: sanitizeText(word.w),
+        }));
         const result = await this.ai.call("/v1/flag", {
           words: transcribed.words,
           glossary,
@@ -111,7 +122,7 @@ export class Lectures {
       : null;
     const start = flag?.startIdx ?? b.startIdx,
       end = flag?.endIdx ?? b.endIdx,
-      to = flag?.suggestion ?? b.to;
+      to = sanitizeText(flag?.suggestion ?? b.to);
     let fixed;
     try {
       fixed = applyCorrection(l.words, l.flags, start, end, to);

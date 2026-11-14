@@ -1,16 +1,17 @@
 # StudyWeave 3.0 Module B
 
-Node 20.19+ / TypeScript / Express / MongoDB. No Module A or C source existed in the workspace. All implementation is in `api/`, `deploy/`, and Module B CI. No Gemini SDK, endpoint, or key is used.
+Node 20.19+ / TypeScript / Express / MongoDB. No Module A or C source existed in the workspace. All implementation is in `api/`, `deploy/`, and Module B CI. Module B uses no Gemini SDK, endpoint, or key. Deployment passes `GEMINI_API_KEY` only to Module A.
 
 ## Run locally
 
-Install Node 20.19+ and MongoDB 7, or use Atlas. From the repository root:
+Local MongoDB + FakeAiClient needs **no credentials**. Install Node 20.19+ and MongoDB 7. **[YOUR CREDENTIALS REQUIRED: Atlas database URI/password]** if you use Atlas instead. From the repository root:
 
 ```sh
 cd api
 npm ci
 cp .env.example .env
-# Edit MONGODB_URI if MongoDB is not at localhost:27017.
+# [YOUR CREDENTIALS REQUIRED only for Atlas] Set MONGODB_URI to your Atlas URI.
+# Local MongoDB at localhost:27017 needs no credentials.
 set -a
 . ./.env
 set +a
@@ -19,7 +20,7 @@ npm run seed
 npm run dev
 ```
 
-The API listens on port 3000. `AI_MODE=fake` requires no AI service or API key. For Module A, set `AI_MODE=http` and `AI_SERVICE_URL=http://localhost:8000`, then restart. Fake parsing deliberately returns the three demo pages; it does not parse real documents. Real PDF/PPTX/YouTube extraction and audio transcription require Module A.
+The API listens on port 3000. `AI_MODE=fake` requires no AI service or API key. **[YOUR CREDENTIALS REQUIRED: Gemini API key in Module A]** For real Module A, set `AI_MODE=http` and `AI_SERVICE_URL=http://localhost:8000`, then restart. Fake parsing deliberately returns the three demo pages; it does not parse real documents. Real PDF/PPTX/YouTube extraction and audio transcription require Module A.
 
 ```sh
 curl http://localhost:3000/healthz
@@ -77,4 +78,4 @@ No `contracts/` or shared `fixtures/` existed. Proposed schemas/types are staged
 
 Errors use `{error:{code,message}}`: 400 `bad_request`, 404 `not_found`, 429 `rate_limited`, 503 `ai_unavailable`, 500 `internal`. Invalid file ranges return 416 with `bad_request`. Extraction is asynchronous: failures are recorded as `unsupported` with a plain explanation, keeping the resource in the tree.
 
-Resource tags are `lecture`, `notes`, `past_paper`, `model_paper`. Upload limit is 25 MiB. Web extraction supports static HTML/plain text, not arbitrary JavaScript-rendered sites; redirects/private networks are rejected. YouTube extraction is delegated to Module A. All timestamps are source-provided and should be presented as approximate.
+Resource tags are `lecture`, `notes`, `past_paper`, `model_paper`. Upload limit is **20 MB (20,000,000 bytes)**, including audio. Document uploads allow only matching PDF/PPTX extensions and signatures: PDF headers or bounded ZIP inspection of PPTX presentation metadata. Control and Unicode format/zero-width characters are removed from captured text; line controls become spaces. Stored pages are capped at **20,000 UTF-16 code units** after sanitization (without splitting surrogate pairs); web text is sanitized before 2,000-character pseudo-page splitting. AI responses are sanitized before persistent caching. Original source bytes are retained unchanged in GridFS. Web extraction supports static HTML/plain text, not arbitrary JavaScript-rendered sites; redirects/private networks are rejected. YouTube extraction is delegated to Module A. All timestamps are source-provided and should be presented as approximate.

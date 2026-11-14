@@ -119,3 +119,13 @@ The trace harness returned 20/20 on labelled synthetic fixture cases. These case
 - `deploy/scripts/smoke.sh`
 
 See [README.md](README.md) for exact local commands and [deployment instructions](../deploy/README.md) for Atlas, container, seed, and HTTPS commands.
+
+## Demo hardening follow-up
+
+Contracts and fixtures were left unchanged. Production Compose now includes an image-supplied Module A on the private backend bridge, with no host port. Only A receives GEMINI_API_KEY; B uses http://ai-service:8000. Outbound traffic remains enabled for Gemini/Atlas. Module A's image/source and the Docker daemon are unavailable, so actual container startup remains untested.
+
+Document upload validation now enforces a 20,000,000-byte limit and PDF/PPTX extension/signature agreement. PPTX validation lazily reads ZIP metadata, checks presentation members/content type, and rejects oversized/encrypted archives. Audio shares the size limit. Captured text and cached AI responses strip control/format characters; stored pages cap at 20,000 UTF-16 units. Original GridFS bytes remain unchanged. Tests cover exact size boundaries, forged files, real ZIP containers, controls/zero-width characters, and sanitization in persisted web/document/YouTube data and AI cache.
+
+The root scripts/smoke.sh forwards to the deployment implementation; it verifies health, tree, stored verified-question reuse, and standard curl HTTPS certificate checks. The HTTP test bypass explicitly reports TLS untested. Credential-dependent README steps are marked.
+
+Additional files: api/src/services/uploads.ts, api/src/services/text.ts, api/tests/uploads.test.ts, api/tests/text.test.ts, scripts/smoke.sh. The follow-up suite passed all 82 tests across 7 files (25.04 seconds), superseding the earlier 62-test baseline. Build, formatting, dependency audit (zero known vulnerabilities), Compose checks, shell syntax, and the 20-case synthetic trace evaluation passed. Public TLS, real Module A/Gemini, Atlas, and Docker runtime remain untested.

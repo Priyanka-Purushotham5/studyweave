@@ -1,3 +1,4 @@
+import { MAX_UPLOAD_BYTES } from "../services/uploads.js";
 import express from "express";
 import { streamFile } from "../services/files.js";
 import multer from "multer";
@@ -44,7 +45,7 @@ export function routes(
   const study = new Study(s, ai);
   const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 25 * 1024 * 1024, files: 1, fields: 8 },
+    limits: { fileSize: MAX_UPLOAD_BYTES + 1, files: 1, fields: 8 },
   });
   r.get(
     "/tree",
