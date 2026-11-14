@@ -1,7 +1,10 @@
 services:
   ai-service:
-    # Module A is supplied as an image; its source is owned by Priyanka.
+    # Build teammate-owned source without modifying it.
     image: ${AI_SERVICE_IMAGE:-studyweave-ai-service:demo}
+    build:
+      context: ..
+      dockerfile: deploy/ai.Dockerfile
     restart: unless-stopped
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:?Set GEMINI_API_KEY in deploy/.env}

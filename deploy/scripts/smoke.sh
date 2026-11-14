@@ -6,7 +6,7 @@ curl_args=(--fail --silent --show-error --connect-timeout 10 --max-time 30)
 if [[ -n "${CURL_AUTH:-}" ]]; then curl_args+=(--user "$CURL_AUTH"); fi
 [[ "$base" == https://* || "${ALLOW_HTTP:-}" == 1 ]] || { echo 'HTTPS URL required'; exit 1; }
 curl "${curl_args[@]}" "$base/healthz" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{if(!JSON.parse(s).ok)process.exit(1)})'
-curl "${curl_args[@]}" "$base/api/tree" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{if(!Array.isArray(JSON.parse(s)))process.exit(1)})'
+curl "${curl_args[@]}" "$base/api/tree" | node -e 'let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{if(!Array.isArray(JSON.parse(s).subjects))process.exit(1)})'
 payload=$(node -e 'process.stdout.write(JSON.stringify({moduleId:process.argv[1],n:1}))' "$module")
 question_id=''
 for run in 1 2; do

@@ -1,3 +1,4 @@
+import { sharedValidator } from "./shared.js";
 import AjvModule from "ajv";
 import { responses } from "./schemas.js";
 import { ApiError } from "../services/errors.js";
@@ -7,6 +8,20 @@ const ajv = new Ajv({ allErrors: true, allowUnionTypes: true });
 export const responseValidators = Object.fromEntries(
   Object.entries(responses).map(([k, s]) => [k, ajv.compile(s)]),
 );
+for (const [local, shared] of Object.entries({
+  tree: "Tree",
+  resource: "Resource",
+  job: "JobStatus",
+  graph: "Graph",
+  questions: "QuestionsNextResponse",
+  attempt: "AttemptResponse",
+  ask: "AnswerResponse",
+  revisionPlan: "RevisionPlan",
+  lecture: "Lecture",
+  correction: "CorrectionResponse",
+  error: "Error",
+}))
+  responseValidators[local] = sharedValidator(shared);
 export function responseValidation(
   req: Request,
   res: Response,

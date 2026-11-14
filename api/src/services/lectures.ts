@@ -1,5 +1,6 @@
 import { validateUploadSize } from "./uploads.js";
 import { sanitizeText } from "./text.js";
+import { plainPages } from "./public.js";
 import { randomUUID } from "node:crypto";
 import { Store } from "../db/store.js";
 import type { AiClient } from "../ai/aiClient.js";
@@ -54,20 +55,26 @@ export class Lectures {
       await this.s.put("lectures", { ...lecture, status: "running" });
       try {
         const glossary = (
-          await this.ai.call("/v1/glossary", { pages: slides.pages })
+          await this.ai.call("/v1/glossary", {
+            pages: plainPages(slides.pages),
+          })
         ).terms.map((term: any) => ({
           ...term,
           term: sanitizeText(term.term),
           definition: sanitizeText(term.definition),
         }));
-        const corrections = await this.s.all("corrections", { moduleId });
+        const corrections = (await this.s.all("corrections", { moduleId })).map(
+          (c) => ({ heard: c.from, correct: c.to, count: c.count }),
+        );
         const transcribed = await this.ai.upload(
           "/v1/transcribe",
           buffer,
           filename,
           {
             glossary: JSON.stringify(glossary),
-            hints: JSON.stringify(corrections.filter((c) => c.count >= 2)),
+            hints: JSON.stringify(
+              corrections.filter((c) => c.count >= 2).map((c) => c.correct),
+            ),
           },
         );
         transcribed.words = transcribed.words.map((word: any) => ({

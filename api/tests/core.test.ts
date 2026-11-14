@@ -31,7 +31,9 @@ describe("deterministic learning", () => {
     ).toBe(expected),
   );
   it("nests empty subjects", () =>
-    expect(tree([{ id: "s" }], [], [], [])).toEqual([{ id: "s", exams: [] }]));
+    expect(tree([{ id: "s" }], [], [], [])).toEqual({
+      subjects: [{ id: "s", exams: [] }],
+    }));
   it("traces weakest ancestor with nearest tie and terminates on cycles", () => {
     const cs = concepts.map((c) => ({ ...c, readiness: 30 }));
     expect(
@@ -187,7 +189,7 @@ it("diamond prerequisite graphs visit a shared ancestor once and choose shortest
   ];
   const result = trace("c_backprop", cs, es, []);
   expect(result.rootConceptId).toBe("c_gradient");
-  expect(result.path).toEqual(["c_gradient", "c_chain_rule", "c_backprop"]);
+  expect(result.path).toEqual(["c_backprop", "c_chain_rule", "c_gradient"]);
 });
 it("unconnected concept traces to itself", () =>
   expect(trace("c_gradient", concepts, edges, []).path).toEqual([

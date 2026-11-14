@@ -17,7 +17,7 @@ const { app, jobs } = createApp(
   },
 );
 await jobs.recover();
-const server = app.listen(c.port, () =>
+const server = app.listen(c.port, process.env.HOST ?? "0.0.0.0", () =>
   console.log(`StudyWeave API listening on ${c.port}`),
 );
 for (const signal of ["SIGTERM", "SIGINT"])

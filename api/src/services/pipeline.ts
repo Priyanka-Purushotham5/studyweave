@@ -1,3 +1,4 @@
+import { plainPages, publicConcept } from "./public.js";
 import { Store } from "../db/store.js";
 import { hash, type AiClient } from "../ai/aiClient.js";
 import { candidatePairs, type NeighborFinder } from "./neighbors.js";
@@ -35,7 +36,11 @@ export async function build(
       id:
         existing.find((x) => x.name.toLowerCase() === c.name.toLowerCase())
           ?.id ??
-        "c_" + hash({ moduleId, name: c.name.toLowerCase() }).slice(0, 20),
+        "c_" +
+          c.name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "_")
+            .replace(/^_|_$/g, ""),
       moduleId,
       name: c.name,
       definition: c.definition,
@@ -57,6 +62,11 @@ export async function build(
     throw new ApiError("ai_unavailable", "Invalid embedding response");
   for (let i = 0; i < cs.length; i++) {
     const old = await s.get("concepts", cs[i].id);
+    if (old && old.moduleId !== moduleId)
+      throw new ApiError(
+        "bad_request",
+        `Concept ID ${cs[i].id} already belongs to another module; shared ID policy needs review`,
+      );
     cs[i].embedding = vectors.vectors[i];
     await s.put("concepts", {
       ...cs[i],
@@ -66,10 +76,16 @@ export async function build(
   }
   const all = await s.all<Concept>("concepts");
   const pairs = await candidatePairs(all, finder);
-  const response = await ai.call("/v1/edges/type", { pairs });
   const allPages = (
     await s.all("resources", { extractionStatus: "done" })
   ).flatMap((r) => r.pages);
+  const response = await ai.call("/v1/edges/type", {
+    pairs: pairs.map(({ a, b }) => ({
+      a: publicConcept(a),
+      b: publicConcept(b),
+    })),
+    pages: allPages,
+  });
   for (const e of response.edges ?? [])
     if (
       e &&
@@ -81,7 +97,7 @@ export async function build(
     )
       await s.put("edges", {
         ...e,
-        id: "e_" + hash({ from: e.from, to: e.to, type: e.type }).slice(0, 20),
+        id: `e_${e.from}__${e.to}`,
       });
   await weights(s, ai, moduleId);
 }
@@ -95,7 +111,7 @@ export async function weights(s: Store, ai: AiClient, moduleId: string) {
   const count = new Map<string, number>();
   for (const p of papers) {
     const result = await ai.call("/v1/papers/tag", {
-      pages: p.pages,
+      pages: plainPages(p.pages),
       concepts: cs.map((c) => c.name),
     });
     const names = new Set<string>(
@@ -119,10 +135,10 @@ export async function generate(
 ) {
   const pages = await modulePages(s, c.moduleId);
   const result = await ai.call("/v1/questions/generate", {
-    concept: c,
+    concept: publicConcept(c),
     pages,
     kind,
-    n,
+    n: Math.min(n, 20),
   });
   for (const q of result.questions ?? [])
     if (

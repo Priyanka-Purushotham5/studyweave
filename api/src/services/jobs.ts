@@ -3,19 +3,21 @@ import { Store } from "../db/store.js";
 export class Jobs {
   private active = new Set<Promise<void>>();
   constructor(private s: Store) {}
-  async enqueue(kind: string, run: () => Promise<void>) {
+  async enqueue(kind: string, run: () => Promise<void>, ownerId?: string) {
     const id = randomUUID();
-    await this.s.put("jobs", { id, kind, status: "queued" });
+    const owner = ownerId ? { ownerId } : {};
+    await this.s.put("jobs", { id, kind, ...owner, status: "queued" });
     const p = new Promise<void>((resolve) => setImmediate(resolve)).then(
       async () => {
-        await this.s.put("jobs", { id, kind, status: "running" });
+        await this.s.put("jobs", { id, kind, ...owner, status: "running" });
         try {
           await run();
-          await this.s.put("jobs", { id, kind, status: "done" });
+          await this.s.put("jobs", { id, kind, ...owner, status: "done" });
         } catch (e) {
           await this.s.put("jobs", {
             id,
             kind,
+            ...owner,
             status: "failed",
             error: e instanceof Error ? e.message : "Job failed",
           });
@@ -30,8 +32,16 @@ export class Jobs {
     while (this.active.size) await Promise.all([...this.active]);
   }
   async recover() {
+    const interrupted = await this.s.all("jobs", {
+      kind: "extract",
+      ownerId: { $exists: true },
+      status: { $in: ["queued", "running"] },
+    });
     await this.s.db.collection("resources").updateMany(
-      { extractionStatus: "pending" },
+      {
+        extractionStatus: "pending",
+        id: { $in: interrupted.map((j) => j.ownerId) },
+      },
       {
         $set: {
           extractionStatus: "unsupported",

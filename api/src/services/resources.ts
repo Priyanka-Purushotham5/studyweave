@@ -187,43 +187,48 @@ export class Resources {
       if (newlyStoredFile) await this.s.deleteFile(fileId);
       throw e;
     }
-    await this.jobs.enqueue("extract", async () => {
-      try {
-        const result = file
-          ? await this.ai.upload("/v1/parse", file.buffer, file.originalname)
-          : body.type === "youtube"
-            ? await this.ai.call("/v1/video/text", { url: body.url })
-            : { pages: splitPages(body.text ?? (await this.web(body.url))) };
-        if (
-          !Array.isArray(result.pages) ||
-          !result.pages.length ||
-          result.pages.some(
-            (p: any) => !Number.isInteger(p.n) || typeof p.text !== "string",
+    await this.jobs.enqueue(
+      "extract",
+      async () => {
+        try {
+          const result = file
+            ? await this.ai.upload("/v1/parse", file.buffer, file.originalname)
+            : body.type === "youtube"
+              ? await this.ai.call("/v1/video/text", { url: body.url })
+              : { pages: splitPages(body.text ?? (await this.web(body.url))) };
+          if (
+            !Array.isArray(result.pages) ||
+            !result.pages.length ||
+            result.pages.some(
+              (p: any) => !Number.isInteger(p.n) || typeof p.text !== "string",
+            )
           )
-        )
-          throw new Error("No supported text could be extracted");
-        await this.s.put("resources", {
-          ...row,
-          pages: result.pages.map((p: any) => ({
-            ...p,
-            text: sanitizeText(p.text),
-            resourceId: id,
-          })),
-          extractionStatus: "done",
-        });
-        if (["past_paper", "model_paper"].includes(body.tag))
-          await this.jobs.enqueue("paper-weights", () =>
-            weights(this.s, this.ai, body.moduleId),
-          );
-      } catch (e) {
-        await this.s.put("resources", {
-          ...row,
-          extractionStatus: "unsupported",
-          extractionError: e instanceof Error ? e.message : "Extraction failed",
-        });
-        throw e;
-      }
-    });
+            throw new Error("No supported text could be extracted");
+          await this.s.put("resources", {
+            ...row,
+            pages: result.pages.map((p: any) => ({
+              ...p,
+              text: sanitizeText(p.text),
+              resourceId: id,
+            })),
+            extractionStatus: "done",
+          });
+          if (["past_paper", "model_paper"].includes(body.tag))
+            await this.jobs.enqueue("paper-weights", () =>
+              weights(this.s, this.ai, body.moduleId),
+            );
+        } catch (e) {
+          await this.s.put("resources", {
+            ...row,
+            extractionStatus: "unsupported",
+            extractionError:
+              e instanceof Error ? e.message : "Extraction failed",
+          });
+          throw e;
+        }
+      },
+      id,
+    );
     return row;
   }
 }

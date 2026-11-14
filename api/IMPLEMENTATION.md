@@ -129,3 +129,13 @@ Document upload validation now enforces a 20,000,000-byte limit and PDF/PPTX ext
 The root scripts/smoke.sh forwards to the deployment implementation; it verifies health, tree, stored verified-question reuse, and standard curl HTTPS certificate checks. The HTTP test bypass explicitly reports TLS untested. Credential-dependent README steps are marked.
 
 Additional files: api/src/services/uploads.ts, api/src/services/text.ts, api/tests/uploads.test.ts, api/tests/text.test.ts, scripts/smoke.sh. The follow-up suite passed all 82 tests across 7 files (25.04 seconds), superseding the earlier 62-test baseline. Build, formatting, dependency audit (zero known vulnerabilities), Compose checks, shell syntax, and the 20-case synthetic trace evaluation passed. Public TLS, real Module A/Gemini, Atlas, and Docker runtime remain untested.
+
+## Integration with merged team main
+
+Merged origin/main at 0cd9ff8 onto b/module-b-integration, preserving all earlier B commits and both modules' CI. No differences exist versus origin/main under contracts/, fixtures/ or ai-service/. B now uses shared AJV 2020-12 definitions, shared seed data, a shared-fixture default FakeAiClient, strict public response projections, missed-to-root trace paths and single-object trace evidence. A's multipart/file, correction-history, page and edge-request formats are integrated. Startup resource recovery now targets only resources owned by interrupted extraction jobs, preserving the fixture's pending video.
+
+Verification: 90 B tests across 9 files passed, including three real HTTP integration tests against merged A in fake mode; 140 A offline tests passed with 2 live tests skipped after explicitly unsetting GEMINI_API_KEY; all 9 mapped shared fixtures and their citations passed validation. Build, formatting, dependency audit (zero advisories), Compose syntax, and local HTTP smoke passed. Docker image execution, public TLS, Atlas and real Gemini remain untested. The real A fake uses fixed model-output fixtures, so semantic refusal on arbitrary seeded questions is not claimed.
+
+The running local demo is B at 127.0.0.1:3000, A at 127.0.0.1:8001 (FAKE_GEMINI=1, key unset), and MongoDB at 127.0.0.1:27018, database studyweave_demo. These are local processes with temporary local DB data, not a deployed managed service.
+
+See CONTRACT_REVIEW.md for requested B-to-C additions and unresolved ID, attempt-history, within-module candidate and fake-service decisions. In particular, passing a seeded build does not prove fresh-build equality to graph.json. No shared-contract edits or teammate messages were made, and no branch has been pushed.

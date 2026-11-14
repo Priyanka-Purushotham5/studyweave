@@ -52,9 +52,9 @@ export function trace(
   const c = byId.get(root.id);
   return {
     rootConceptId: root.id,
-    path: root.path,
+    path: [...root.path].reverse(),
     readiness: c?.readiness ?? null,
-    evidence: c?.evidence ?? [],
+    evidence: c!.evidence[0],
     status:
       attempts.filter((a) => a.conceptId === root.id).length >= 2 &&
       (c?.readiness ?? 100) < 40
@@ -148,16 +148,17 @@ export function revisionPlan(cs: Concept[], budget: number) {
   return ranked;
 }
 export function revisionPath(t: Trace, concepts: Concept[] = []) {
-  if (t.path.length === 1) return [{ kind: "retry", conceptId: t.path[0] }];
+  const path = [...t.path].reverse();
+  if (path.length === 1) return [{ kind: "retry", conceptId: path[0] }];
   return [
-    { kind: "review", conceptId: t.rootConceptId, evidence: t.evidence },
+    { kind: "review", conceptId: t.rootConceptId, evidence: [t.evidence] },
     { kind: "practice", conceptId: t.rootConceptId, difficulty: 1, n: 2 },
-    ...t.path.slice(1, -1).map((conceptId) => ({
+    ...path.slice(1, -1).map((conceptId) => ({
       kind: "review",
       conceptId,
       evidence: concepts.find((c) => c.id === conceptId)?.evidence ?? [],
     })),
-    { kind: "retry", conceptId: t.path.at(-1) },
+    { kind: "retry", conceptId: path.at(-1) },
   ];
 }
 export function applyCorrection(

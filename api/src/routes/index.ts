@@ -1,4 +1,10 @@
 import { MAX_UPLOAD_BYTES } from "../services/uploads.js";
+import {
+  publicResource,
+  publicJob,
+  publicLecture,
+} from "../services/public.js";
+import { sharedValidator } from "../contracts/shared.js";
 import express from "express";
 import { streamFile } from "../services/files.js";
 import multer from "multer";
@@ -29,6 +35,12 @@ export function routes(
   const valid = Object.fromEntries(
     Object.entries(schemas).map(([k, v]) => [k, ajv.compile(v)]),
   );
+  for (const [local, shared] of Object.entries({
+    questions: "QuestionsNextRequest",
+    attempt: "AttemptRequest",
+    correction: "CorrectionRequest",
+  }))
+    valid[local] = sharedValidator(shared);
   const validate = (name: string) => (req: any, _res: any, next: any) =>
     valid[name](req.body)
       ? next()
@@ -107,7 +119,7 @@ export function routes(
     "/resources",
     validate("resource"),
     handle(async (req: any, res: any) =>
-      res.status(201).json(await resources.save(req.body)),
+      res.status(201).json(publicResource(await resources.save(req.body))),
     ),
   );
   r.post(
@@ -129,9 +141,11 @@ export function routes(
       res
         .status(201)
         .json(
-          await resources.save(
-            { moduleId: req.body.moduleId, tag: req.body.tag },
-            req.file,
+          publicResource(
+            await resources.save(
+              { moduleId: req.body.moduleId, tag: req.body.tag },
+              req.file,
+            ),
           ),
         );
     }),
@@ -151,7 +165,9 @@ export function routes(
     "/jobs/:id",
     handle(async (req: any, res: any) =>
       res.json(
-        requireValue(await s.get("jobs", req.params.id), "Job not found"),
+        publicJob(
+          requireValue(await s.get("jobs", req.params.id), "Job not found"),
+        ),
       ),
     ),
   );
@@ -229,9 +245,11 @@ export function routes(
     "/lectures/:id",
     handle(async (req: any, res: any) =>
       res.json(
-        requireValue(
-          await s.get("lectures", req.params.id),
-          "Lecture not found",
+        publicLecture(
+          requireValue(
+            await s.get("lectures", req.params.id),
+            "Lecture not found",
+          ),
         ),
       ),
     ),

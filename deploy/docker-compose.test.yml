@@ -1,4 +1,4 @@
-# Runs only Module B; A and C are not present in this workspace.
+# Key-free A+B integration stack. Module C is not implemented here.
 services:
   mongo:
     image: mongo:7
@@ -7,16 +7,26 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+  ai-service:
+    build:
+      context: ..
+      dockerfile: deploy/ai.Dockerfile
+    environment:
+      FAKE_GEMINI: "1"
+    expose: ["8000"]
   api:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
     environment:
       MONGODB_URI: mongodb://mongo:27017
-      AI_MODE: fake
+      AI_MODE: http
+      AI_SERVICE_URL: http://ai-service:8000
       NODE_ENV: test
       ENABLE_DEV_SEED: "true"
     ports: ["127.0.0.1:3000:3000"]
     depends_on:
+      ai-service:
+        condition: service_healthy
       mongo:
         condition: service_healthy

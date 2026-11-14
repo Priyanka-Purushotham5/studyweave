@@ -14,7 +14,7 @@ ALLOW_HTTP=1 bash deploy/scripts/smoke.sh http://localhost:3000
 docker compose -f deploy/docker-compose.test.yml down
 ```
 
-This starts B with FakeAiClient and ephemeral MongoDB. A and C are absent from this repository; this compose file does not claim to test their implementations. `npm test` separately runs mongodb-memory-server and HTTP-adapter seam tests.
+This builds the merged A source with FAKE_GEMINI=1, B with its HTTP adapter, and ephemeral MongoDB. No Gemini key is needed. Module C is not implemented here. `npm test` separately runs mongodb-memory-server and HTTP-adapter seam tests.
 
 ## Atlas and vectors
 
@@ -29,7 +29,7 @@ Index creation and actual Atlas search could not be validated without credential
 
 1. **[YOUR CREDENTIALS REQUIRED: cloud/SSH and DNS-provider access]** Provision or use an approved Linux host with Docker Engine and Compose. Permit inbound TCP 80 and 443. Point your already-approved domain's DNS A record at this host.
 2. **[YOUR CREDENTIALS REQUIRED: SSH, private Git/registry access if applicable]** Check out branch `b/module-b-implementation` (or its reviewed/merged commit) on the host.
-3. **[YOUR CREDENTIALS REQUIRED: Atlas URI/password and Gemini API key]** Run `cp deploy/.env.example deploy/.env`. Set `DOMAIN`, the real `MONGODB_URI`, `GEMINI_API_KEY`, `AI_SERVICE_IMAGE`, and `CORS_ORIGIN` to the web app origin. Obtain/build Priyanka’s Module A image (listening on `0.0.0.0:8000`) before starting; its source is absent here. Compose fixes `AI_MODE=http` and `AI_SERVICE_URL=http://ai-service:8000`. Only the AI container receives the Gemini key. Keep `VECTOR_MODE=cosine` until Atlas indexing is confirmed.
+3. **[YOUR CREDENTIALS REQUIRED: Atlas URI/password and Gemini API key]** Run `cp deploy/.env.example deploy/.env`. Set `DOMAIN`, the real `MONGODB_URI`, `GEMINI_API_KEY`, `AI_SERVICE_IMAGE`, and `CORS_ORIGIN` to the web app origin. Compose builds Priyanka’s merged Module A source using `deploy/ai.Dockerfile` (listening on `0.0.0.0:8000`); it does not modify that source. Compose fixes `AI_MODE=http` and `AI_SERVICE_URL=http://ai-service:8000`. Only the AI container receives the Gemini key. Keep `VECTOR_MODE=cosine` until Atlas indexing is confirmed.
 4. **[YOUR CREDENTIALS REQUIRED: choose and retain your demo username/password]** Set `API_USERNAME` and generate a password hash with `docker run --rm -it caddy:2-alpine caddy hash-password`. Put the hash in `deploy/.env` in single quotes so Compose preserves dollar signs: `API_PASSWORD_HASH='$2a$...'`. Caddy protects this single-user demonstration API with Basic authentication over HTTPS. The direct API port is not published.
 5. **[YOUR CREDENTIALS REQUIRED: SSH and configured Atlas/Gemini credentials; registry login if private]** Start: `docker compose --env-file deploy/.env -f deploy/docker-compose.yml up --build -d`. Caddy obtains/renews the certificate when DNS and ports are correct.
 6. **[YOUR CREDENTIALS REQUIRED: SSH and configured Atlas URI]** Seed if desired: `docker compose --env-file deploy/.env -f deploy/docker-compose.yml exec api node dist/seed.js`. The production HTTP seed endpoint stays disabled.
@@ -40,8 +40,8 @@ The AI service is attached only to the private Docker `backend` bridge and publi
 
 Production commands use Atlas persistence and Caddy certificate volumes. Back up Atlas independently. The process drains active jobs on shutdown (up to 30 seconds); interrupted jobs are marked failed on restart, interrupted extraction becomes unsupported, and interrupted lectures become failed. This deployment supports one API worker; jobs are not a distributed queue. Re-upload/rebuild explicitly after a failed interrupted operation; source bytes remain in GridFS. Re-uploading an unsupported resource retries extraction using the existing resource ID and stored source file.
 
-Docker image execution, public TLS, DNS, Vultr, actual Atlas vector results, and the real A/B/C live stack remain external verification steps. The Docker daemon was stopped in the implementation environment. The Compose test configuration and smoke shell syntax were validated locally, and the smoke script ran against a real local seeded HTTP API.
+Docker image execution, public TLS, DNS, Vultr, actual Atlas vector results, and the real-Gemini A/B/C live stack remain external verification steps. The Docker daemon was stopped in the implementation environment. The Compose test configuration and smoke shell syntax were validated locally, and the smoke script ran against a real local seeded HTTP API.
 
 ## CI
 
-`.github/workflows/ci.yml` runs the API build/tests and proposed-contract checks on Node 20. No secrets are required. Add Module A's pytest and Module C's vitest/jest-axe jobs when their owners supply those folders. GitHub branch protection must require the relevant checks; this cannot be configured in an unconnected local repository.
+`.github/workflows/ci.yml` runs the API build/tests and proposed-contract checks on Node 20. No secrets are required. CI preserves Module A’s pytest job and shared Python fixture validation. The API job also starts key-free A and runs real HTTP seam tests. Add Module C’s vitest/jest-axe job when its implementation is supplied. GitHub branch protection must require the relevant checks; this cannot be configured in an unconnected local repository.

@@ -13,8 +13,11 @@ import { Jobs } from "../src/services/jobs.js";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import { connect, Store } from "../src/db/store.js";
 import { createApp } from "../src/app.js";
-import { FakeAiClient, CachedAiClient } from "../src/ai/aiClient.js";
-import { seed } from "../src/services/seed.js";
+import {
+  LegacyFakeAiClient as FakeAiClient,
+  CachedAiClient,
+} from "../src/ai/aiClient.js";
+import { seedLegacy as seed } from "../src/services/seed.js";
 import { concepts, edges } from "../src/fixtures/demo.js";
 import { ApiError } from "../src/services/errors.js";
 let mongo: MongoMemoryServer;
@@ -68,7 +71,7 @@ describe("B1 B2 B12 API and Mongo persistence", () => {
     const module = await request(ctx.app)
       .post("/api/modules")
       .send({ name: "Calculus", examId: exam.body.id });
-    const tree = (await request(ctx.app).get("/api/tree")).body;
+    const tree = (await request(ctx.app).get("/api/tree")).body.subjects;
     expect(tree[0].exams[0].modules[0].id).toBe(module.body.id);
     expect(
       (

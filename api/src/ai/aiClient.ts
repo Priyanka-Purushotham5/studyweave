@@ -1,3 +1,5 @@
+import { fixture } from "../services/sharedFixtures.js";
+import { verified } from "../services/citations.js";
 import { sanitizeCapturedValue } from "../services/text.js";
 import { createHash } from "node:crypto";
 import { Store } from "../db/store.js";
@@ -53,7 +55,7 @@ export class HttpAiClient implements AiClient {
     if (!r.ok) {
       if (r.status === 422)
         throw new ApiError(
-          "bad_request",
+          body.error?.code === "scanned_pdf" ? "scanned_pdf" : "bad_request",
           body.error?.message ?? "Scanned PDFs require selectable text",
           422,
         );
@@ -78,16 +80,12 @@ export class HttpAiClient implements AiClient {
     fields: Record<string, string> = {},
   ) {
     const form = new FormData();
-    form.append(
-      endpoint === "/v1/transcribe" ? "audio" : "file",
-      new Blob([new Uint8Array(data)]),
-      filename,
-    );
+    form.append("file", new Blob([new Uint8Array(data)]), filename);
     for (const [k, v] of Object.entries(fields)) form.append(k, v);
     return this.request(endpoint, { method: "POST", body: form });
   }
 }
-export class FakeAiClient implements AiClient {
+export class LegacyFakeAiClient implements AiClient {
   calls = 0;
   async upload(
     endpoint: string,
@@ -211,12 +209,12 @@ export class FakeAiClient implements AiClient {
         };
       case "/v1/flag": {
         const learned = b.corrections?.find(
-          (c: any) => c.from === "back propagation" && c.count >= 2,
+          (c: any) => c.heard === "back propagation" && c.count >= 2,
         );
         return learned
           ? {
               flags: [],
-              autoFixed: [{ startIdx: 0, endIdx: 2, to: learned.to }],
+              autoFixed: [{ startIdx: 0, endIdx: 2, to: learned.correct }],
             }
           : {
               flags: [
@@ -285,5 +283,134 @@ export class CachedAiClient implements AiClient {
     return this.cached(hash({ e, d: d.toString("base64"), f, fields }), () =>
       this.inner.upload(e, d, f, fields),
     );
+  }
+}
+
+/** Key-free neighbor fake backed by the exact shared fixtures used by A and C. */
+export class FakeAiClient implements AiClient {
+  calls = 0;
+  async upload(
+    endpoint: string,
+    data: Buffer,
+    filename: string,
+    fields: Record<string, string> = {},
+  ) {
+    if (endpoint === "/v1/parse")
+      return {
+        pages: fixture("pages").pages.map(({ resourceId, ...p }: any) => p),
+      };
+    return this.call(endpoint, fields);
+  }
+  async call(endpoint: string, body: any) {
+    this.calls++;
+    const graph = fixture("graph"),
+      pages = body.pages ?? [];
+    switch (endpoint) {
+      case "/v1/video/text":
+        return {
+          pages: fixture("pages").pages.map(({ resourceId, ...p }: any) => p),
+          approximateTimestamps: false,
+        };
+      case "/v1/glossary":
+        return fixture("glossary");
+      case "/v1/transcribe": {
+        const words = fixture("lecture").words;
+        return { words, text: words.map((w: any) => w.w).join(" ") };
+      }
+      case "/v1/flag": {
+        const l = fixture("lecture");
+        const autoFixed = l.flags.flatMap((f: any) => {
+          const learned = body.corrections?.find(
+            (c: any) =>
+              c.heard.toLowerCase() === f.heard.toLowerCase() && c.count >= 2,
+          );
+          return learned
+            ? [{ startIdx: f.startIdx, endIdx: f.endIdx, to: learned.correct }]
+            : [];
+        });
+        return {
+          flags: l.flags.filter(
+            (f: any) => !autoFixed.some((a: any) => a.startIdx === f.startIdx),
+          ),
+          autoFixed,
+        };
+      }
+      case "/v1/concepts/extract":
+        return {
+          concepts: graph.nodes
+            .map((c: any) => ({
+              name: c.name,
+              definition: c.definition,
+              evidence: c.evidence.map((e: any) => ({
+                ...e,
+                resourceId:
+                  pages.find(
+                    (p: any) =>
+                      p.n === e.page &&
+                      p.text.toLowerCase().includes(e.quote.toLowerCase()),
+                  )?.resourceId ?? e.resourceId,
+              })),
+            }))
+            .filter((c: any) =>
+              c.evidence.every((e: any) => verified(e, pages)),
+            ),
+          dropped: 0,
+        };
+      case "/v1/embed":
+        return {
+          vectors: body.texts.map((_: string, i: number) =>
+            Array.from({ length: 768 }, (_, j) => (j === i % 768 ? 1 : 0)),
+          ),
+        };
+      case "/v1/edges/type":
+        return {
+          edges: body.pairs.map(({ a, b }: any) => {
+            const source = graph.edges.find(
+              (e: any) =>
+                (e.from === a.id && e.to === b.id) ||
+                (e.from === b.id && e.to === a.id),
+            );
+            return source ?? null;
+          }),
+        };
+      case "/v1/questions/generate":
+        return {
+          questions: fixture("questions")
+            .questions.filter(
+              (q: any) =>
+                q.conceptIds.includes(body.concept.id) &&
+                q.kind === body.kind &&
+                q.citations.every((e: any) => verified(e, pages)),
+            )
+            .slice(0, body.n),
+          dropped: 0,
+        };
+      case "/v1/answer":
+        return /chain|gradient|backprop/i.test(
+          body.question ?? body.kind ?? "",
+        ) && pages.length
+          ? {
+              answer: pages[0].text,
+              citations: [
+                {
+                  resourceId: pages[0].resourceId,
+                  page: pages[0].n,
+                  quote: pages[0].text,
+                },
+              ],
+            }
+          : { refused: true, reason: "not_in_materials" };
+      case "/v1/papers/tag":
+        return {
+          questions: pages.map((p: any) => ({
+            text: p.text,
+            concepts: body.concepts.filter((n: string) =>
+              p.text.toLowerCase().includes(n.toLowerCase()),
+            ),
+          })),
+        };
+      default:
+        throw new ApiError("internal", `Unknown fake endpoint ${endpoint}`);
+    }
   }
 }

@@ -64,6 +64,6 @@ export interface Trace {
   rootConceptId: string;
   path: string[];
   readiness: number | null;
-  evidence: Evidence[];
+  evidence: Evidence;
   status: "likely" | "possible";
 }
