@@ -7,7 +7,8 @@ services:
       dockerfile: deploy/ai.Dockerfile
     restart: unless-stopped
     environment:
-      GEMINI_API_KEY: ${GEMINI_API_KEY:?Set GEMINI_API_KEY in deploy/.env}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      FAKE_GEMINI: ${FAKE_GEMINI:-0}
     expose: ["8000"]
     networks: [backend]
     init: true
@@ -27,7 +28,9 @@ services:
       VECTOR_MODE: ${VECTOR_MODE:-cosine}
     expose: ["3000"]
     networks: [backend]
-    depends_on: [ai-service]
+    depends_on:
+      ai-service:
+        condition: service_healthy
     init: true
     stop_grace_period: 40s
   caddy:
