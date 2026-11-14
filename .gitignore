@@ -1,6 +1,10 @@
 node_modules/
 __pycache__/
 .pytest_cache/
-.env
 .venv/
 dist/
+coverage/
+.env
+.env.*
+!.env.example
+.refact/

@@ -1,0 +1,61 @@
+services:
+  ai-service:
+    # Build teammate-owned source without modifying it.
+    image: ${AI_SERVICE_IMAGE:-studyweave-ai-service:demo}
+    build:
+      context: ..
+      dockerfile: ai-service/Dockerfile
+    entrypoint: ["/bin/sh", "/opt/studyweave/start-ai.sh"]
+    volumes:
+      - ./start-ai.sh:/opt/studyweave/start-ai.sh:ro
+    restart: unless-stopped
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      FAKE_GEMINI: ${FAKE_GEMINI:-0}
+    expose: ["8001"]
+    networks: [backend]
+    init: true
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      ENABLE_DEV_SEED: "false"
+      MONGODB_URI: ${MONGODB_URI:?Set MONGODB_URI in deploy/.env}
+      MONGODB_DB: ${MONGODB_DB:-studyweave}
+      AI_MODE: http
+      AI_SERVICE_URL: http://ai-service:8001
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+      VECTOR_MODE: ${VECTOR_MODE:-cosine}
+      CONCEPT_ID_COLLISIONS: ${CONCEPT_ID_COLLISIONS:-reject}
+    expose: ["3000"]
+    networks: [backend]
+    depends_on:
+      ai-service:
+        condition: service_healthy
+    init: true
+    stop_grace_period: 40s
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in deploy/.env}
+      API_USERNAME: ${API_USERNAME:?Set API_USERNAME in deploy/.env}
+      API_PASSWORD_HASH: ${API_PASSWORD_HASH:?Set API_PASSWORD_HASH in deploy/.env}
+    ports: ["80:80", "443:443"]
+    networks: [backend]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api]
+networks:
+  # Private service discovery; no API/AI host ports. Outbound access is needed
+  # for Gemini (A) and Atlas (B), so Docker's egress-blocking internal:true is not used.
+  backend:
+    driver: bridge
+volumes:
+  caddy_data:
+  caddy_config:

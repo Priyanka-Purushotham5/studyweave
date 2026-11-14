@@ -1,0 +1,35 @@
+# Key-free A+B integration stack. Module C is not implemented here.
+services:
+  mongo:
+    image: mongo:7
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ping:1})"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  ai-service:
+    build:
+      context: ..
+      dockerfile: ai-service/Dockerfile
+    entrypoint: ["/bin/sh", "/opt/studyweave/start-ai.sh"]
+    volumes:
+      - ./start-ai.sh:/opt/studyweave/start-ai.sh:ro
+    environment:
+      FAKE_GEMINI: "1"
+    expose: ["8001"]
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
+      AI_MODE: http
+      AI_SERVICE_URL: http://ai-service:8001
+      NODE_ENV: test
+      ENABLE_DEV_SEED: "true"
+    ports: ["127.0.0.1:${DEMO_API_PORT:-3000}:3000"]
+    depends_on:
+      ai-service:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy

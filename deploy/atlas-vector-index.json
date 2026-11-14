@@ -1,0 +1,15 @@
+{
+  "name": "concept_embedding",
+  "type": "vectorSearch",
+  "definition": {
+    "fields": [
+      {
+        "type": "vector",
+        "path": "embedding",
+        "numDimensions": 768,
+        "similarity": "cosine"
+      },
+      { "type": "filter", "path": "moduleId" }
+    ]
+  }
+}

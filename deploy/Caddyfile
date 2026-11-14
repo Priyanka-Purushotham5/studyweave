@@ -1,0 +1,10 @@
+{$DOMAIN} {
+    basic_auth {
+        {$API_USERNAME} {$API_PASSWORD_HASH}
+    }
+    encode zstd gzip
+    request_body {
+        max_size 28MB
+    }
+    reverse_proxy api:3000
+}

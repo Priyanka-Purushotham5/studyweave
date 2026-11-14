@@ -1,6 +1,14 @@
+.git
+.refact
+.agents
+.codex
+.aws
+**/node_modules
+**/dist
 **/.venv
 **/__pycache__
 **/.pytest_cache
-**/node_modules
-.git
 **/.env
+**/.env.*
+**/coverage
+*.log
