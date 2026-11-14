@@ -1,0 +1,22 @@
+:root { font: 13px/1.4 "Instrument Sans", "Avenir Next", system-ui, sans-serif; color: #1f2921; background: #f7f8f3; }
+* { box-sizing: border-box; }
+body { width: 324px; margin: 0; }
+header { display: flex; align-items: center; gap: 10px; padding: 15px; background: #1c503a; color: #fff; }
+header p { margin: 0; color: #dee9df; }
+h1 { font-size: 17px; letter-spacing: -.04em; margin: 0; }
+.mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; background: #def2ac; color: #204432; font-weight: 800; font-size: 18px; }
+main { padding: 13px 15px; }
+.page-title { margin: 0 0 10px; color: #45594b; overflow-wrap: anywhere; font-weight: 600; }
+form, label { display: grid; gap: 7px; }
+label { font-weight: 650; }
+input, select, button { color: inherit; font: inherit; border: 1px solid #bdcbbd; border-radius: 7px; min-height: 32px; background: #fff; padding: 4px 8px; min-width: 0; }
+button { cursor: pointer; font-weight: 700; }
+button:disabled { opacity: .55; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid #147f52; outline-offset: 2px; }
+.primary { color: #fff; background: #1c5a41; border-color: #1c5a41; }
+.suggestion { background: #e5f0e5; color: #1c5a41; }
+#status { min-height: 18px; overflow-wrap: anywhere; color: #365740; margin: 8px 0; }
+#status.error { color: #8d2d36; }
+details { border-top: 1px solid #dce5db; padding-top: 6px; }
+summary { cursor: pointer; font-weight: 600; }
+details form { margin-top: 7px; }

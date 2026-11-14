@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>StudyWeave Capture</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <header><span class="mark" aria-hidden="true">S</span><div><h1>StudyWeave</h1><p>Save this page</p></div></header>
+    <main>
+      <p id="page-title" class="page-title"></p>
+      <form id="capture">
+        <label>Course<select id="subject" required></select></label>
+        <label>Exam<select id="exam" required></select></label>
+        <label>Module<select id="module" required></select></label>
+        <button id="suggestion" class="suggestion" type="button" hidden></button>
+        <button id="save" class="primary" disabled>Save current tab</button>
+      </form>
+      <p id="status" role="status"></p>
+      <details><summary>API connection</summary>
+        <form id="settings"><label>StudyWeave API URL<input type="url" id="server" required></label><button type="submit">Connect</button></form>
+      </details>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
