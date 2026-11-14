@@ -1,7 +1,68 @@
-import type {Concept} from '../contracts/types.js';
-import type {Db} from 'mongodb';
-export function cosine(a:number[],b:number[]) {if(a.length!==b.length||!a.length)return 0; const norm=Math.hypot(...a)*Math.hypot(...b);return norm?a.reduce((s,x,i)=>s+x*b[i],0)/norm:0;}
-export interface NeighborFinder {find(c:Concept,all:Concept[],k:number):Promise<Concept[]>}
-export class CosineNeighborFinder implements NeighborFinder {async find(c:Concept,all:Concept[],k:number){return all.filter(x=>x.id!==c.id&&x.moduleId!==c.moduleId).sort((a,b)=>cosine(c.embedding??[],b.embedding??[])-cosine(c.embedding??[],a.embedding??[])||a.id.localeCompare(b.id)).slice(0,k);}}
-export class AtlasNeighborFinder implements NeighborFinder {constructor(private db:Db,private fallback:NeighborFinder=new CosineNeighborFinder()){} async find(c:Concept,all:Concept[],k:number){try{return await this.db.collection<Concept>('concepts').aggregate<Concept>([{$vectorSearch:{index:'concept_embedding',path:'embedding',queryVector:c.embedding,numCandidates:Math.max(k*20,100),limit:k,filter:{moduleId:{$ne:c.moduleId}}}},{$project:{_id:0}}]).toArray();}catch{return this.fallback.find(c,all,k);}}}
-export async function candidatePairs(cs:Concept[],finder:NeighborFinder,k=5) {const pairs:{a:Concept;b:Concept}[]=[]; const seen=new Set<string>();for(const a of cs)for(const b of await finder.find(a,cs,k)){const key=[a.id,b.id].sort().join(':');if(!seen.has(key)){seen.add(key);pairs.push({a,b});}}return pairs;}
+import type { Concept } from "../contracts/types.js";
+import type { Db } from "mongodb";
+export function cosine(a: number[], b: number[]) {
+  if (a.length !== b.length || !a.length) return 0;
+  const norm = Math.hypot(...a) * Math.hypot(...b);
+  return norm ? a.reduce((s, x, i) => s + x * b[i], 0) / norm : 0;
+}
+export interface NeighborFinder {
+  find(c: Concept, all: Concept[], k: number): Promise<Concept[]>;
+}
+export class CosineNeighborFinder implements NeighborFinder {
+  async find(c: Concept, all: Concept[], k: number) {
+    return all
+      .filter((x) => x.id !== c.id && x.moduleId !== c.moduleId)
+      .sort(
+        (a, b) =>
+          cosine(c.embedding ?? [], b.embedding ?? []) -
+            cosine(c.embedding ?? [], a.embedding ?? []) ||
+          a.id.localeCompare(b.id),
+      )
+      .slice(0, k);
+  }
+}
+export class AtlasNeighborFinder implements NeighborFinder {
+  constructor(
+    private db: Db,
+    private fallback: NeighborFinder = new CosineNeighborFinder(),
+  ) {}
+  async find(c: Concept, all: Concept[], k: number) {
+    try {
+      return await this.db
+        .collection<Concept>("concepts")
+        .aggregate<Concept>([
+          {
+            $vectorSearch: {
+              index: "concept_embedding",
+              path: "embedding",
+              queryVector: c.embedding,
+              numCandidates: Math.max(k * 20, 100),
+              limit: k,
+              filter: { moduleId: { $ne: c.moduleId } },
+            },
+          },
+          { $project: { _id: 0 } },
+        ])
+        .toArray();
+    } catch {
+      return this.fallback.find(c, all, k);
+    }
+  }
+}
+export async function candidatePairs(
+  cs: Concept[],
+  finder: NeighborFinder,
+  k = 5,
+) {
+  const pairs: { a: Concept; b: Concept }[] = [];
+  const seen = new Set<string>();
+  for (const a of cs)
+    for (const b of await finder.find(a, cs, k)) {
+      const key = [a.id, b.id].sort().join(":");
+      if (!seen.has(key)) {
+        seen.add(key);
+        pairs.push({ a, b });
+      }
+    }
+  return pairs;
+}

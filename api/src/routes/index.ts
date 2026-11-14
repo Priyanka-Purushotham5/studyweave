@@ -1,35 +1,251 @@
-import express from 'express';
-import multer from 'multer';
-import {randomUUID} from 'node:crypto';
-import AjvModule from 'ajv';
-import {schemas} from '../contracts/schemas.js';
-import {Store} from '../db/store.js';
-import type {AiClient} from '../ai/aiClient.js';
-import {ApiError,requireValue} from '../services/errors.js';
-import {tree,seed} from '../services/seed.js';
-import {readiness,trace,selectQuestions,revisionPlan,revisionPath} from '../services/learning.js';
-import {Resources} from '../services/resources.js';
-import {Lectures} from '../services/lectures.js';
-import {Jobs} from '../services/jobs.js';
-import {build,generate,modulePages} from '../services/pipeline.js';
-import {verified} from '../services/citations.js';
-import type {NeighborFinder} from '../services/neighbors.js';
-import type {Concept,Attempt,Edge,Question} from '../contracts/types.js';
-const Ajv=AjvModule as unknown as typeof AjvModule.default;
-export function routes(s:Store,ai:AiClient,jobs:Jobs,finder:NeighborFinder,enableSeed=false){const r=express.Router();const ajv=new Ajv({allErrors:true});const valid=Object.fromEntries(Object.entries(schemas).map(([k,v])=>[k,ajv.compile(v)]));const validate=(name:string)=>(req:any,_res:any,next:any)=>valid[name](req.body)?next():next(new ApiError('bad_request',`Invalid ${name} request: ${ajv.errorsText(valid[name].errors)}`));const handle=(fn:any)=>(req:any,res:any,next:any)=>Promise.resolve(fn(req,res)).catch(next);const resources=new Resources(s,ai,jobs),lectures=new Lectures(s,ai,jobs);const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:25*1024*1024,files:1,fields:8}});
-r.get('/tree',handle(async(_q:any,res:any)=>res.json(tree(...await Promise.all(['subjects','exams','modules','resources'].map(n=>s.all(n))) as [any[],any[],any[],any[]]))));
-for(const [path,schema,parent]of [['subjects','subject',null],['exams','exam','subjects'],['modules','module','exams']] as const)r.post('/'+path,validate(schema),handle(async(req:any,res:any)=>{if(parent)requireValue(await s.get(parent,req.body[parent==='subjects'?'subjectId':'examId']),'Parent not found');res.status(201).json(await s.put(path,{id:randomUUID(),...req.body}));}));
-r.post('/resources',validate('resource'),handle(async(req:any,res:any)=>res.status(201).json(await resources.save(req.body))));
-r.post('/resources/upload',upload.single('file'),handle(async(req:any,res:any)=>{if(!req.file||!req.body.moduleId||!['lecture','notes','past_paper','model_paper'].includes(req.body.tag)||! /\.(pdf|pptx)$/i.test(req.file.originalname))throw new ApiError('bad_request','Provide a PDF or PPTX, moduleId and valid tag');res.status(201).json(await resources.save({moduleId:req.body.moduleId,tag:req.body.tag},req.file));}));
-r.post('/modules/:id/build',handle(async(req:any,res:any)=>{requireValue(await s.get('modules',req.params.id),'Module not found');res.status(202).json({jobId:await jobs.enqueue('build',()=>build(s,ai,finder,req.params.id))});}));
-r.get('/jobs/:id',handle(async(req:any,res:any)=>res.json(requireValue(await s.get('jobs',req.params.id),'Job not found'))));
-r.get('/graph',handle(async(req:any,res:any)=>{let cs=await s.all<Concept>('concepts');if(req.query.subjectId){const exams=await s.all('exams',{subjectId:req.query.subjectId});const ms=await s.all('modules',{examId:{$in:exams.map(e=>e.id)}});cs=cs.filter(c=>ms.some(m=>m.id===c.moduleId));}res.json({nodes:cs.map(({embedding,...c})=>c),edges:(await s.all<Edge>('edges')).filter(e=>cs.some(c=>c.id===e.from)&&cs.some(c=>c.id===e.to))});}));
-r.post('/questions/next',validate('questions'),handle(async(req:any,res:any)=>{requireValue(await s.get('modules',req.body.moduleId),'Module not found');const cs=await s.all<Concept>('concepts'),attempts=await s.all<Attempt>('attempts');let qs=selectQuestions(await s.all<Question>('questions'),cs,attempts,req.body);if(qs.length<req.body.n){for(const c of cs.filter(c=>c.moduleId===req.body.moduleId&&(!req.body.conceptId||c.id===req.body.conceptId)).sort((a,b)=>(a.readiness??0)-(b.readiness??0))){await generate(s,ai,c,req.body.kind??'conceptual',req.body.n);qs=selectQuestions(await s.all('questions'),cs,attempts,req.body);if(qs.length>=req.body.n)break;}}res.json({questions:qs});}));
-r.post('/attempts',validate('attempt'),handle(async(req:any,res:any)=>{const q=requireValue(await s.get<Question>('questions',req.body.questionId),'Question not found');requireValue(await s.get('concepts',req.body.conceptId),'Concept not found');if(!q.verified||!q.conceptIds.includes(req.body.conceptId))throw new ApiError('bad_request','Question does not test this concept');const attempt={id:randomUUID(),...req.body,createdAt:Date.now()};await s.put('attempts',attempt);const attempts=(await s.all<Attempt>('attempts')).sort((a,b)=>b.createdAt-a.createdAt||b.id.localeCompare(a.id));const c=requireValue(await s.get<Concept>('concepts',req.body.conceptId));const value=readiness(attempts.filter(a=>a.conceptId===c.id));await s.put('concepts',{...c,readiness:value});res.json({readiness:{[c.id]:value},trace:req.body.correct?null:trace(c.id,await s.all('concepts'),await s.all('edges'),attempts),xp:req.body.correct?10:0});}));
-r.post('/ask',validate('ask'),handle(async(req:any,res:any)=>{if(!req.body.question&&!req.body.kind)throw new ApiError('bad_request','question or kind is required');requireValue(await s.get('modules',req.body.moduleId),'Module not found');const pages=await modulePages(s,req.body.moduleId);const result=await ai.call('/v1/answer',{...(req.body.kind?{kind:req.body.kind}:{question:req.body.question}),pages});res.json(result.refused?result:result.citations?.length&&result.citations.every((e:any)=>verified(e,pages))?result:{refused:true,reason:'not_in_materials'});}));
-r.get('/revision-plan',handle(async(req:any,res:any)=>{const minutes=Number(req.query.minutesPerDay);if(!Number.isInteger(minutes)||minutes<1||minutes>1440||typeof req.query.examId!=='string')throw new ApiError('bad_request','Provide examId and minutesPerDay (1–1440)');requireValue(await s.get('exams',req.query.examId),'Exam not found');const ms=await s.all('modules',{examId:req.query.examId});res.json(revisionPlan((await s.all<Concept>('concepts')).filter(c=>ms.some(m=>m.id===c.moduleId)),minutes));}));
-r.get('/revision-path',handle(async(req:any,res:any)=>{if(typeof req.query.conceptId!=='string')throw new ApiError('bad_request','conceptId required');requireValue(await s.get('concepts',req.query.conceptId),'Concept not found');res.json(revisionPath(trace(req.query.conceptId,await s.all('concepts'),await s.all('edges'),await s.all('attempts'))));}));
-r.post('/lectures',upload.single('audio'),handle(async(req:any,res:any)=>{if(!req.file||typeof req.body.moduleId!=='string'||typeof req.body.slidesResourceId!=='string')throw new ApiError('bad_request','audio, moduleId and slidesResourceId required');res.status(202).json(await lectures.create(req.body.moduleId,req.body.slidesResourceId,req.file.buffer,req.file.originalname));}));
-r.get('/lectures/:id',handle(async(req:any,res:any)=>res.json(requireValue(await s.get('lectures',req.params.id),'Lecture not found'))));
-r.post('/lectures/:id/corrections',validate('correction'),handle(async(req:any,res:any)=>res.json(await lectures.correct(req.params.id,req.body))));
-if(enableSeed)r.post('/dev/seed',handle(async(_q:any,res:any)=>res.json(await seed(s))));return r;}
+import express from "express";
+import { streamFile } from "../services/files.js";
+import multer from "multer";
+import { randomUUID } from "node:crypto";
+import AjvModule from "ajv";
+import { schemas } from "../contracts/schemas.js";
+import { Store } from "../db/store.js";
+import type { AiClient } from "../ai/aiClient.js";
+import { ApiError, requireValue } from "../services/errors.js";
+import { tree, seed } from "../services/seed.js";
+import { Resources } from "../services/resources.js";
+import { Lectures } from "../services/lectures.js";
+import { Jobs } from "../services/jobs.js";
+import { build } from "../services/pipeline.js";
+import { Study } from "../services/study.js";
+import type { NeighborFinder } from "../services/neighbors.js";
+import type { Concept, Attempt, Edge, Question } from "../contracts/types.js";
+const Ajv = AjvModule as unknown as typeof AjvModule.default;
+export function routes(
+  s: Store,
+  ai: AiClient,
+  jobs: Jobs,
+  finder: NeighborFinder,
+  enableSeed = false,
+) {
+  const r = express.Router();
+  const ajv = new Ajv({ allErrors: true });
+  const valid = Object.fromEntries(
+    Object.entries(schemas).map(([k, v]) => [k, ajv.compile(v)]),
+  );
+  const validate = (name: string) => (req: any, _res: any, next: any) =>
+    valid[name](req.body)
+      ? next()
+      : next(
+          new ApiError(
+            "bad_request",
+            `Invalid ${name} request: ${ajv.errorsText(valid[name].errors)}`,
+          ),
+        );
+  const handle = (fn: any) => (req: any, res: any, next: any) =>
+    Promise.resolve(fn(req, res)).catch(next);
+  const resources = new Resources(s, ai, jobs),
+    lectures = new Lectures(s, ai, jobs);
+  const study = new Study(s, ai);
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024, files: 1, fields: 8 },
+  });
+  r.get(
+    "/tree",
+    handle(async (_q: any, res: any) =>
+      res.json(
+        tree(
+          ...((await Promise.all(
+            ["subjects", "exams", "modules", "resources"].map((n) => s.all(n)),
+          )) as [any[], any[], any[], any[]]),
+        ),
+      ),
+    ),
+  );
+  for (const [path, schema, parent] of [
+    ["subjects", "subject", null],
+    ["exams", "exam", "subjects"],
+    ["modules", "module", "exams"],
+  ] as const)
+    r.post(
+      "/" + path,
+      validate(schema),
+      handle(async (req: any, res: any) => {
+        if (parent)
+          requireValue(
+            await s.get(
+              parent,
+              req.body[parent === "subjects" ? "subjectId" : "examId"],
+            ),
+            "Parent not found",
+          );
+        res
+          .status(201)
+          .json(await s.put(path, { id: randomUUID(), ...req.body }));
+      }),
+    );
+  r.get(
+    "/resources/:id/file",
+    handle(async (req: any, res: any) => {
+      const row = requireValue(
+        await s.get("resources", req.params.id),
+        "Resource not found",
+      );
+      requireValue(row.fileId, "Source file not found");
+      await streamFile(s, row.fileId, req, res);
+    }),
+  );
+  r.get(
+    "/lectures/:id/audio",
+    handle(async (req: any, res: any) => {
+      const row = requireValue(
+        await s.get("lectures", req.params.id),
+        "Lecture not found",
+      );
+      requireValue(row.audioFileId, "Audio file not found");
+      await streamFile(s, row.audioFileId, req, res);
+    }),
+  );
+  r.post(
+    "/resources",
+    validate("resource"),
+    handle(async (req: any, res: any) =>
+      res.status(201).json(await resources.save(req.body)),
+    ),
+  );
+  r.post(
+    "/resources/upload",
+    upload.single("file"),
+    handle(async (req: any, res: any) => {
+      if (
+        !req.file ||
+        !req.body.moduleId ||
+        !["lecture", "notes", "past_paper", "model_paper"].includes(
+          req.body.tag,
+        ) ||
+        !/\.(pdf|pptx)$/i.test(req.file.originalname)
+      )
+        throw new ApiError(
+          "bad_request",
+          "Provide a PDF or PPTX, moduleId and valid tag",
+        );
+      res
+        .status(201)
+        .json(
+          await resources.save(
+            { moduleId: req.body.moduleId, tag: req.body.tag },
+            req.file,
+          ),
+        );
+    }),
+  );
+  r.post(
+    "/modules/:id/build",
+    handle(async (req: any, res: any) => {
+      requireValue(await s.get("modules", req.params.id), "Module not found");
+      res.status(202).json({
+        jobId: await jobs.enqueue("build", () =>
+          build(s, ai, finder, req.params.id),
+        ),
+      });
+    }),
+  );
+  r.get(
+    "/jobs/:id",
+    handle(async (req: any, res: any) =>
+      res.json(
+        requireValue(await s.get("jobs", req.params.id), "Job not found"),
+      ),
+    ),
+  );
+  r.get(
+    "/graph",
+    handle(async (req: any, res: any) => {
+      res.json(
+        await study.graph(
+          typeof req.query.subjectId === "string"
+            ? req.query.subjectId
+            : undefined,
+        ),
+      );
+    }),
+  );
+  r.post(
+    "/questions/next",
+    validate("questions"),
+    handle(async (req: any, res: any) => {
+      res.json(await study.next(req.body));
+    }),
+  );
+  r.post(
+    "/attempts",
+    validate("attempt"),
+    handle(async (req: any, res: any) => {
+      res.json(await study.attempt(req.body));
+    }),
+  );
+  r.post(
+    "/ask",
+    validate("ask"),
+    handle(async (req: any, res: any) => {
+      res.json(await study.ask(req.body));
+    }),
+  );
+  r.get(
+    "/revision-plan",
+    handle(async (req: any, res: any) => {
+      res.json(await study.plan(req.query.examId, req.query.minutesPerDay));
+    }),
+  );
+  r.get(
+    "/revision-path",
+    handle(async (req: any, res: any) => {
+      res.json(await study.path(req.query.conceptId));
+    }),
+  );
+  r.post(
+    "/lectures",
+    upload.single("audio"),
+    handle(async (req: any, res: any) => {
+      if (
+        !req.file ||
+        typeof req.body.moduleId !== "string" ||
+        typeof req.body.slidesResourceId !== "string"
+      )
+        throw new ApiError(
+          "bad_request",
+          "audio, moduleId and slidesResourceId required",
+        );
+      res
+        .status(202)
+        .json(
+          await lectures.create(
+            req.body.moduleId,
+            req.body.slidesResourceId,
+            req.file.buffer,
+            req.file.originalname,
+          ),
+        );
+    }),
+  );
+  r.get(
+    "/lectures/:id",
+    handle(async (req: any, res: any) =>
+      res.json(
+        requireValue(
+          await s.get("lectures", req.params.id),
+          "Lecture not found",
+        ),
+      ),
+    ),
+  );
+  r.post(
+    "/lectures/:id/corrections",
+    validate("correction"),
+    handle(async (req: any, res: any) =>
+      res.json(await lectures.correct(req.params.id, req.body)),
+    ),
+  );
+  if (enableSeed)
+    r.post(
+      "/dev/seed",
+      handle(async (_q: any, res: any) => res.json(await seed(s))),
+    );
+  return r;
+}
