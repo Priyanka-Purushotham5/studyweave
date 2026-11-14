@@ -1,0 +1,15 @@
+# For Danush: add this service to deploy/docker-compose.yml (build context is the repo root).
+# B reaches A at http://ai:8001 on the compose network; do not publish the port publicly.
+  ai:
+    build:
+      context: ..
+      dockerfile: ai-service/Dockerfile
+    environment:
+      FAKE_GEMINI: "0"                 # "1" serves fixtures, no key needed (use this for the test compose file)
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      # GEMINI_MODEL: ...              # names your key lists in AI Studio
+      # GEMINI_EMBED_MODEL: ...
+      # GEMINI_TRANSCRIBE_MODEL: ...
+    expose:
+      - "8001"
+    restart: unless-stopped
