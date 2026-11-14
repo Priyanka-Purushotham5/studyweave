@@ -4,12 +4,15 @@ services:
     image: ${AI_SERVICE_IMAGE:-studyweave-ai-service:demo}
     build:
       context: ..
-      dockerfile: deploy/ai.Dockerfile
+      dockerfile: ai-service/Dockerfile
+    entrypoint: ["/bin/sh", "/opt/studyweave/start-ai.sh"]
+    volumes:
+      - ./start-ai.sh:/opt/studyweave/start-ai.sh:ro
     restart: unless-stopped
     environment:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       FAKE_GEMINI: ${FAKE_GEMINI:-0}
-    expose: ["8000"]
+    expose: ["8001"]
     networks: [backend]
     init: true
   api:
@@ -23,9 +26,10 @@ services:
       MONGODB_URI: ${MONGODB_URI:?Set MONGODB_URI in deploy/.env}
       MONGODB_DB: ${MONGODB_DB:-studyweave}
       AI_MODE: http
-      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_URL: http://ai-service:8001
       CORS_ORIGIN: ${CORS_ORIGIN:-}
       VECTOR_MODE: ${VECTOR_MODE:-cosine}
+      CONCEPT_ID_COLLISIONS: ${CONCEPT_ID_COLLISIONS:-reject}
     expose: ["3000"]
     networks: [backend]
     depends_on:

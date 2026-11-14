@@ -10,10 +10,13 @@ services:
   ai-service:
     build:
       context: ..
-      dockerfile: deploy/ai.Dockerfile
+      dockerfile: ai-service/Dockerfile
+    entrypoint: ["/bin/sh", "/opt/studyweave/start-ai.sh"]
+    volumes:
+      - ./start-ai.sh:/opt/studyweave/start-ai.sh:ro
     environment:
       FAKE_GEMINI: "1"
-    expose: ["8000"]
+    expose: ["8001"]
   api:
     build:
       context: ..
@@ -21,7 +24,7 @@ services:
     environment:
       MONGODB_URI: mongodb://mongo:27017
       AI_MODE: http
-      AI_SERVICE_URL: http://ai-service:8000
+      AI_SERVICE_URL: http://ai-service:8001
       NODE_ENV: test
       ENABLE_DEV_SEED: "true"
     ports: ["127.0.0.1:${DEMO_API_PORT:-3000}:3000"]

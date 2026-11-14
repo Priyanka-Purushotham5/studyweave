@@ -13,7 +13,7 @@ export function config(env: NodeJS.ProcessEnv = process.env) {
     uri: env.MONGODB_URI,
     db: env.MONGODB_DB ?? "studyweave",
     fake,
-    aiUrl: env.AI_SERVICE_URL ?? "http://localhost:8000",
+    aiUrl: env.AI_SERVICE_URL ?? "http://localhost:8001",
     origin: env.CORS_ORIGIN,
     enableSeed: env.ENABLE_DEV_SEED === "true",
   };

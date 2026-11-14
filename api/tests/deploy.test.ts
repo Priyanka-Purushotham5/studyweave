@@ -10,7 +10,7 @@ function config() {
       "ai-service": { environment: { FAKE_GEMINI: "1", GEMINI_API_KEY: "" } },
       api: {
         environment: {
-          AI_SERVICE_URL: "http://ai-service:8000",
+          AI_SERVICE_URL: "http://ai-service:8001",
           NODE_ENV: "production",
           ENABLE_DEV_SEED: "false",
           MONGODB_URI:
@@ -55,7 +55,7 @@ it.each([
   if (kind === "seed-enabled")
     c.services.api.environment.ENABLE_DEV_SEED = "true";
   if (kind === "wrong-ai-host")
-    c.services.api.environment.AI_SERVICE_URL = "http://localhost:8000";
+    c.services.api.environment.AI_SERVICE_URL = "http://localhost:8001";
   if (kind === "missing-key")
     c.services["ai-service"].environment.FAKE_GEMINI = "0";
   expect(check(c).status).not.toBe(0);

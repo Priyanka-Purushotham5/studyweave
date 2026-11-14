@@ -13,7 +13,7 @@ requireValue(
   "Only Caddy may publish API/AI traffic",
 );
 requireValue(
-  s.api.environment.AI_SERVICE_URL === "http://ai-service:8000",
+  s.api.environment.AI_SERVICE_URL === "http://ai-service:8001",
   "API must call A by internal service name",
 );
 requireValue(
