@@ -1,0 +1,22 @@
+# Candidate single-login session architecture
+
+This is a candidate deployment and has not been enabled on production. Host Caddy terminates HTTPS and routes `/login`, `/auth/login`, and `/auth/logout` to a loopback-only authentication gateway. Every other request to `studynova.ink` first goes through Caddy `forward_auth`; Caddy forwards the original method and URI and overwrites `X-Real-IP`. The gateway denies access if it is unavailable. Unauthenticated API calls receive 401; browser navigation is redirected to the login page. `api.studynova.ink` returns 404 for all paths. The team UI and API remain bound to loopback; Module A remains on the Docker network.
+
+The gateway reads the existing `/etc/caddy/studynova-team-auth.caddy` username and bcrypt hash as a read-only bind mount. It never needs the plaintext password. The gateway process runs as a non-root user and needs the server's numeric `caddy` group ID supplied privately as `CADDY_AUTH_GID` so it can read the existing root:caddy 0640 file. Validate that the mounted file is readable before switching Caddy. If the file is replaced during credential rotation, recreate the gateway to pick up the new bind mount.
+
+Successful logins receive an opaque, 256-bit random `__Host-studynova` cookie with `Secure`, `HttpOnly`, `SameSite=Strict`, `Path=/`, and an eight-hour maximum age. The gateway keeps server-side session state in memory. Restarting it signs everyone out; multiple independent sessions can coexist. It never writes passwords or session cookies to localStorage. Every unsafe method requires the exact configured Origin, including login and logout; the backend's existing origin check remains in place. Login attempts are limited to 10 per IP per minute in one gateway process. This limiter is not distributed and resets when the gateway restarts; a determined distributed attack or shared-IP lockout remains possible. Add upstream protections before widening access. Shared credentials do not provide individual identity, audit, or individual revocation.
+
+## Local testing
+
+The unit suite runs with `python -m pip install -r auth-service/requirements.txt pytest httpx` followed by `pytest -q auth-service`. The local browser test used an isolated Caddy, MongoDB and fake AI stack. A localhost HTTP origin was used only for local browser testing; production cookies and site use HTTPS.
+
+## Migration after explicit approval
+
+1. Back up the host Caddyfile, Compose files, environment files, image IDs and volume mappings. Preserve the existing `root:caddy` credential file. Record the current Basic-auth Caddy configuration for rollback.
+2. Stage the reviewed release and build the `auth-service` and `caddy-team` images. Supply the numeric `caddy` group ID as `CADDY_AUTH_GID`, preserve `FAKE_GEMINI=1`, and use the base, single-site and session-auth Compose files. Start the gateway on loopback first while Basic auth still protects production. Verify it can read the mounted credential file without printing its contents. Do not start the base public `caddy` container.
+3. Prepare a complete candidate host Caddyfile preserving unrelated directives and using `host-caddy-session.example`. Validate it with `caddy validate` before switching. Coordinate the brief transition: the old UI does not have a sign-out button, and the session-built UI needs the gateway. Switch the UI and reload Caddy only after the gateway is healthy. If any step fails, restore Basic auth immediately.
+4. Verify real HTTPS, login failures and rate limiting, three independent successful sessions, refresh, sign-out, API denial before login, cross-origin write rejection, API-subdomain 404, container health, and actual extension capture using isolated data. Check existing Atlas readiness; do not seed, reset, or delete production data.
+
+## Rollback
+
+Restore the saved host Caddyfile, validate it, and reload host Caddy to re-enable the prior Basic-auth gate. Restore the recorded API/UI images and prior Compose configuration if they changed. Leave the gateway stopped or inaccessible. Preserve all Docker volumes, Atlas data, HTTPS certificates and credential files. Never use `docker compose down -v` or delete a volume as part of rollback. Existing Basic-auth credentials may need a fresh browser login.

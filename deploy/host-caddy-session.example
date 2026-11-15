@@ -1,0 +1,20 @@
+# Candidate only. Validate the complete host configuration and review before rollout.
+# The auth gateway, API and UI must bind exclusively to loopback.
+studynova.ink {
+    @auth path /login /auth/login /auth/logout
+    handle @auth {
+        reverse_proxy 127.0.0.1:3009 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+    handle {
+        forward_auth 127.0.0.1:3009 {
+            uri /auth/check
+            header_up X-Real-IP {remote_host}
+        }
+        reverse_proxy 127.0.0.1:3007
+    }
+}
+api.studynova.ink {
+    respond 404
+}

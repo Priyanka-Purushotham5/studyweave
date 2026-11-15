@@ -5,11 +5,14 @@ async function call(path, body) {
   const origin = serverAddress(server).origin;
   if (!["/api/tree", "/api/resources"].includes(path)) throw new Error("Unsupported API request.");
   const tabs = await chrome.tabs.query({ url: `${origin}/*` });
-  const appTab = tabs.find(tab => {
+  const appTabs = tabs.filter(tab => {
     try { return tab.id && tab.status === "complete" && new URL(tab.url).origin === origin; }
     catch { return false; }
   });
+  const appTab = appTabs.find(tab => new URL(tab.url).pathname !== "/login") ?? appTabs[0];
   if (!appTab) throw new Error("Open and sign in to StudyNova, then return to this page and try again.");
+  if (new URL(appTab.url).pathname === "/login")
+    throw new Error("Sign in to StudyNova, then return to this page and try again.");
   let execution;
   try {
     execution = await retryNetwork(() => chrome.scripting.executeScript({

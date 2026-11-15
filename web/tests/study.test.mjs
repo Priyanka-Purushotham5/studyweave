@@ -82,6 +82,7 @@ test("extension captures through a signed-in app tab and preserves its selection
   let available = true;
   let responseStatus = 200;
   let changedOrigin = false;
+  let loginPage = false;
   const requests = [];
   const writes = [];
   t.mock.method(globalThis, "fetch", async (url, options) => {
@@ -93,7 +94,7 @@ test("extension captures through a signed-in app tab and preserves its selection
     storage: { local: { get: async () => ({ server }), set: async value => writes.push(value) } },
     tabs: {
       get: async () => ({ url: "https://example.com/notes", title: "Notes" }),
-      query: async () => available ? [{ id: 2, status: "complete", url: server + "/" }] : [],
+      query: async () => available ? [{ id: 2, status: "complete", url: server + (loginPage ? "/login" : "/") }] : [],
     },
     scripting: { executeScript: async options => {
       if (options.world === "MAIN") {
@@ -122,6 +123,9 @@ test("extension captures through a signed-in app tab and preserves its selection
   changedOrigin = true;
   const count = requests.length;
   assert.match((await call({ action: "tree" })).error, /tab changed/i);
+  assert.equal(requests.length, count);
+  loginPage = true;
+  assert.match((await call({ action: "tree" })).error, /sign in/i);
   assert.equal(requests.length, count);
   available = false;
   assert.match((await call({ action: "tree" })).error, /sign in/i);
