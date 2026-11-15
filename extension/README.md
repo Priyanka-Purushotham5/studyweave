@@ -1,10 +1,11 @@
 # StudyWeave Capture
 
-1. Start the StudyWeave API and create or seed a course, exam and module.
-2. Open `chrome://extensions`, turn on **Developer mode**, select **Load unpacked**, and choose this `extension` directory.
-3. Open a web page or YouTube video and click **StudyWeave Capture** in the toolbar. Choose a module and select **Save current tab**.
-4. Refresh StudyWeave to see the saved page.
+Capture a page or YouTube video directly from its browser tab:
 
-The popup remembers the last course, exam and module. It suggests a different module when its name matches the current page title or URL. Page contents are submitted only when you save. The default API origin is `http://127.0.0.1:3000`. To connect to a deployed backend, set its HTTPS origin under **API connection**. Capture uses the live API. Use an ordinary public page to test capture because Module B validates that the submitted page URL is public.
+1. Install the extension: open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select this `extension` folder. Pin **StudyWeave Capture** to the toolbar. Each teammate installs it once; it is not yet published in the Chrome Web Store.
+2. Sign in to `https://studynova.ink` in Chrome and leave that tab open. Create a course, exam, and module if needed.
+3. Open the page or YouTube video you want to save, click the extension icon, select a module, and click **Save current tab**. Refresh StudyNova to see it.
 
-For a deployment protected by HTTP Basic authentication, enter the same username and password Chrome asks for when you open the site, then click **Connect**. The extension keeps the sign-in in memory until Chrome restarts or the extension reloads. The login fields can be left blank for a local API without authentication.
+The popup remembers the last selection and may suggest a module based on the current page. Page text is captured and submitted only when you click save. Requests run from the signed-in StudyNova tab using its existing session, so the extension never asks for or stores the shared password. If you are signed out or have closed that tab, choose **Open StudyNova / sign in**, sign in, return to the page and try again.
+
+The default server is `https://studynova.ink`. The optional **API connection** setting is for other HTTPS deployments or local development and may request permission for the chosen origin. Capturing a page sends its visible text and URL to the selected StudyNova server; only capture material you are authorized to share with the team. Browser-protected pages such as `chrome://` cannot be captured. Fake Gemini remains enabled in the current deployment, so AI results on arbitrary captured pages are not a verified real-model capability.

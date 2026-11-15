@@ -76,82 +76,53 @@ test("extension retries a network failure once", async () => {
   assert.equal(attempts, 2);
 });
 
-test("extension worker loads settings on each message and persists successful captures", async t => {
+test("extension captures through a signed-in app tab and preserves its selection", async t => {
   let listener;
   let server = "https://first.example";
+  let available = true;
+  let responseStatus = 200;
+  let changedOrigin = false;
   const requests = [];
   const writes = [];
   t.mock.method(globalThis, "fetch", async (url, options) => {
-    requests.push({ url: String(url), body: options.body && JSON.parse(options.body) });
-    if (requests.length === 2) throw new TypeError("temporary network failure");
-    return Response.json({ ok: true });
+    requests.push({ url: String(url), body: options.body && JSON.parse(options.body), credentials: options.credentials, redirect: options.redirect });
+    return Response.json(url === "/api/tree" ? { subjects: [] } : { ok: true }, { status: responseStatus });
   });
   globalThis.chrome = {
     runtime: { id: "addon", onMessage: { addListener(callback) { listener = callback; } } },
-    storage: {
-      local: { get: async () => ({ server }), set: async value => writes.push(value) },
-      session: { get: async () => ({}) },
+    storage: { local: { get: async () => ({ server }), set: async value => writes.push(value) } },
+    tabs: {
+      get: async () => ({ url: "https://example.com/notes", title: "Notes" }),
+      query: async () => available ? [{ id: 2, status: "complete", url: server + "/" }] : [],
     },
-    tabs: { get: async () => ({ url: "https://example.com/notes", title: "Notes" }) },
-    scripting: { executeScript: async () => [{ result: { url: "https://example.com/notes", title: "Notes", text: "Backpropagation." } }] },
+    scripting: { executeScript: async options => {
+      if (options.world === "MAIN") {
+        globalThis.location = { origin: changedOrigin ? "https://other.example" : server };
+        return [{ result: await options.func(...options.args) }];
+      }
+      return [{ result: { url: "https://example.com/notes", title: "Notes", text: "Backpropagation." } }];
+    } },
   };
-  t.after(() => { delete globalThis.chrome; });
+  t.after(() => { delete globalThis.chrome; delete globalThis.location; });
   await import("../../extension/worker.js");
   const call = message => new Promise(resolve => listener(message, { id: "addon" }, resolve));
-  assert.deepEqual(await call({ action: "tree" }), { result: { ok: true } });
+  assert.deepEqual(await call({ action: "tree" }), { result: { subjects: [] } });
   server = "https://second.example";
   const lastSelection = { subjectId: "s_nn", examId: "e_midterm", moduleId: "m_backprop" };
   assert.deepEqual(await call({ action: "save", tabId: 1, ...lastSelection }), { result: { ok: true } });
-  assert.deepEqual(requests.map(request => request.url), ["https://first.example/api/tree", "https://second.example/api/resources", "https://second.example/api/resources"]);
-  assert.deepEqual(requests[2].body, { moduleId: "m_backprop", type: "web", url: "https://example.com/notes", title: "Notes", text: "Backpropagation." });
+  assert.deepEqual(requests.map(request => request.url), ["/api/tree", "/api/resources"]);
+  assert(requests.every(request => request.credentials === "same-origin" && request.redirect === "error"));
+  assert.deepEqual(requests[1].body, { moduleId: "m_backprop", type: "web", url: "https://example.com/notes", title: "Notes", text: "Backpropagation." });
   assert.deepEqual(writes, [{ lastSelection }]);
-});
-
-test("extension signs in to the selected HTTPS API and keeps credentials in the browser session", async t => {
-  let listener;
-  const origin = "https://study.example";
-  const authorization = "Basic " + Buffer.from("demo:tést:password").toString("base64");
-  const local = { server: origin };
-  const session = {};
-  const requests = [];
-  t.mock.method(globalThis, "fetch", async (url, options) => {
-    requests.push({ url: url.href, ...options });
-    if (url.origin === origin && options.headers.Authorization !== authorization) {
-      return new Response(null, { status: 401 });
-    }
-    return Response.json(url.pathname === "/api/tree" ? tree : { ok: true });
-  });
-  const storage = data => ({
-    get: async key => ({ [key]: data[key] }),
-    set: async value => Object.assign(data, value),
-    remove: async key => { delete data[key]; },
-  });
-  globalThis.chrome = {
-    runtime: { id: "addon", onMessage: { addListener(callback) { listener = callback; } } },
-    storage: { local: storage(local), session: storage(session) },
-    tabs: { get: async () => ({ url: "https://example.com/notes", title: "Notes" }) },
-    scripting: { executeScript: async () => [] },
-  };
-  t.after(() => { delete globalThis.chrome; });
-  await import("../../extension/worker.js?auth");
-  const call = message => new Promise(resolve => listener(message, { id: "addon" }, resolve));
-  assert.equal((await call({ action: "tree" })).status, 401);
-  assert.equal((await call({ action: "connect", server: origin, username: "demo", password: "wrong" })).status, 401);
-  assert.deepEqual(session, {});
-  assert.match((await call({ action: "connect", server: "http://localhost:3000", username: "demo", password: "secret" })).error, /HTTPS/);
-  assert.equal(requests.length, 2);
-
-  assert.deepEqual((await call({ action: "connect", server: origin, username: "demo", password: "tést:password" })).result, tree);
-  assert.deepEqual(local, { server: origin });
-  assert.deepEqual(session.login, { origin, authorization });
-  assert.deepEqual((await call({ action: "tree" })).result, tree);
-  assert.deepEqual((await call({ action: "save", tabId: 1, moduleId: "m_backprop" })).result, { ok: true });
-  assert.deepEqual(requests.slice(2).map(request => [request.headers.Authorization, request.redirect]), [
-    [authorization, "error"], [authorization, "error"], [authorization, "error"],
-  ]);
-  assert.equal(requests.at(-1).headers["Content-Type"], "application/json");
-  local.server = "https://different.example";
-  await call({ action: "tree" });
-  assert.equal(requests.at(-1).headers.Authorization, undefined);
-  assert.equal(requests.at(-1).credentials, "include");
+  responseStatus = 401;
+  assert.match((await call({ action: "tree" })).error, /sign in/i);
+  responseStatus = 403;
+  assert.match((await call({ action: "tree" })).error, /rejected/i);
+  responseStatus = 200;
+  changedOrigin = true;
+  const count = requests.length;
+  assert.match((await call({ action: "tree" })).error, /tab changed/i);
+  assert.equal(requests.length, count);
+  available = false;
+  assert.match((await call({ action: "tree" })).error, /sign in/i);
 });

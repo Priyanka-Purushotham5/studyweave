@@ -3,7 +3,6 @@ import { defaultServer, selection, serverAddress, suggestModule } from "./captur
 const get = id => document.getElementById(id);
 const subject = get("subject"), exam = get("exam"), module = get("module");
 const save = get("save"), status = get("status"), server = get("server"), suggestion = get("suggestion");
-const settings = get("settings"), username = get("username"), password = get("password");
 let tree = { subjects: [] };
 let tab;
 let suggested;
@@ -13,7 +12,6 @@ function message(text = "", error = false) {
 }
 async function worker(action, data = {}) {
   const response = await chrome.runtime.sendMessage({ action, ...data });
-  if (response?.status === 401) get("connection").open = true;
   if (!response || response.error) throw new Error(response?.error ?? "Capture worker did not respond.");
   return response.result;
 }
@@ -31,12 +29,12 @@ function render(preferred = {}) {
   save.disabled = !module.value || !/^https?:\/\//i.test(tab?.url ?? "");
   suggestion.hidden = !suggested || suggested.moduleId === module.value;
 }
-async function load(fetchTree = () => worker("tree")) {
+async function load() {
   message("Loading courses…");
   save.disabled = true;
   try {
     const { lastSelection } = await chrome.storage.local.get("lastSelection");
-    tree = await fetchTree();
+    tree = await worker("tree");
     suggested = tab && suggestModule(tree, tab);
     if (suggested) suggestion.textContent = `Use suggested module: ${suggested.module.name}`;
     render(lastSelection);
@@ -71,22 +69,21 @@ get("capture").addEventListener("submit", async event => {
     for (const control of controls) if (control !== save) control.disabled = false;
   }
 });
-settings.addEventListener("submit", async event => {
+get("open-app").addEventListener("click", async () => {
+  const { server: selected = defaultServer } = await chrome.storage.local.get("server");
+  await chrome.tabs.create({ url: serverAddress(selected).origin });
+});
+get("settings").addEventListener("submit", async event => {
   event.preventDefault();
-  const controls = [...settings.elements];
+  const controls = [...event.currentTarget.elements];
   try {
     const url = serverAddress(server.value);
-    const credentials = { username: username.value.trim(), password: password.value };
     for (const control of controls) control.disabled = true;
     if (!await chrome.permissions.request({ origins: [`${url.protocol}//${url.hostname}/*`] })) {
       throw new Error("Allow access to the API origin to connect.");
     }
-    await load(async () => {
-      const result = await worker("connect", { server: url.origin, ...credentials });
-      server.value = url.origin;
-      password.value = "";
-      return result;
-    });
+    await chrome.storage.local.set({ server: url.origin });
+    await load();
   } catch (error) { message(error.message, true); }
   finally { for (const control of controls) control.disabled = false; }
 });

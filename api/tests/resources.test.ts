@@ -17,3 +17,38 @@ it.each([
 ])("rejects unsafe capture %s", async (url) => {
   await expect(safeUrl(url)).rejects.toMatchObject({ code: "bad_request" });
 });
+
+it("accepts dual-stack public hosts while rejecting mixed private IPv4 and IPv6-only hosts", async () => {
+  const resolve = (rows: { address: string; family: number }[]) =>
+    (async () => rows) as unknown as typeof import("node:dns/promises").lookup;
+  await expect(
+    safeUrl(
+      "https://example.com/page",
+      resolve([
+        { address: "93.184.215.14", family: 4 },
+        { address: "2606:2800:220:1::1", family: 6 },
+      ]),
+    ),
+  ).resolves.toMatchObject({ hostname: "example.com" });
+  await expect(
+    safeUrl(
+      "https://example.com",
+      resolve([
+        { address: "93.184.215.14", family: 4 },
+        { address: "10.0.0.1", family: 4 },
+      ]),
+    ),
+  ).rejects.toMatchObject({ code: "bad_request" });
+  await expect(
+    safeUrl(
+      "https://example.com",
+      resolve([{ address: "2606:2800:220:1::1", family: 6 }]),
+    ),
+  ).rejects.toMatchObject({ code: "bad_request" });
+  await expect(safeUrl("https://[::1]")).rejects.toMatchObject({
+    code: "bad_request",
+  });
+  await expect(safeUrl("http://100.64.1.1")).rejects.toMatchObject({
+    code: "bad_request",
+  });
+});

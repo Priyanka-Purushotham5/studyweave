@@ -1,7 +1,7 @@
 import { sanitizeText, MAX_CAPTURE_CHARACTERS } from "./text.js";
 import { validateDocument } from "./uploads.js";
 import { randomUUID } from "node:crypto";
-import { isIP } from "node:net";
+import { isIP, BlockList } from "node:net";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { lookup } from "node:dns/promises";
@@ -18,7 +18,28 @@ export function splitPages(text: string) {
     result.push({ n: result.length + 1, text: text.slice(i, i + 2000) });
   return result;
 }
-export async function safeUrl(value: string) {
+const nonPublicIpv4 = new BlockList();
+for (const [address, prefix] of [
+  ["0.0.0.0", 8],
+  ["10.0.0.0", 8],
+  ["100.64.0.0", 10],
+  ["127.0.0.0", 8],
+  ["169.254.0.0", 16],
+  ["172.16.0.0", 12],
+  ["192.0.0.0", 24],
+  ["192.0.2.0", 24],
+  ["192.168.0.0", 16],
+  ["198.18.0.0", 15],
+  ["198.51.100.0", 24],
+  ["203.0.113.0", 24],
+  ["224.0.0.0", 4],
+  ["240.0.0.0", 4],
+] as const)
+  nonPublicIpv4.addSubnet(address, prefix, "ipv4");
+const publicIpv4 = (address: string) =>
+  isIP(address) === 4 && !nonPublicIpv4.check(address, "ipv4");
+
+export async function safeUrl(value: string, resolve: typeof lookup = lookup) {
   let url: URL;
   try {
     url = new URL(value);
@@ -31,20 +52,18 @@ export async function safeUrl(value: string) {
     url.password
   )
     throw new ApiError("bad_request", "Only public HTTP URLs are supported");
+  if (url.hostname.startsWith("["))
+    throw new ApiError(
+      "bad_request",
+      "Only public IPv4 destinations are supported",
+    );
   const ips = isIP(url.hostname)
-    ? [{ address: url.hostname }]
-    : await lookup(url.hostname, { all: true });
-  if (
-    !ips.length ||
-    ips.some(
-      ({ address: a }) =>
-        !isIP(a) ||
-        a.includes(":") ||
-        /^(0\.|10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|224\.|255\.)/.test(
-          a,
-        ),
-    )
-  )
+    ? [{ address: url.hostname, family: 4 }]
+    : await resolve(url.hostname, { all: true });
+  // Network fetches are pinned to IPv4. Ignore AAAA records but reject hosts
+  // with any non-public IPv4 address, including mixed public/private answers.
+  const ipv4 = ips.filter(({ address }) => isIP(address) === 4);
+  if (!ipv4.length || ipv4.some(({ address }) => !publicIpv4(address)))
     throw new ApiError("bad_request", "Private network URLs are not supported");
   return url;
 }
@@ -52,13 +71,7 @@ export async function fetchText(value: string) {
   const url = await safeUrl(value);
   // Pin the validated DNS result to the socket to prevent DNS rebinding.
   const resolved = await lookup(url.hostname, { all: true });
-  const address = resolved.find(
-    ({ address }) =>
-      isIP(address) === 4 &&
-      !/^(0\.|10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|22[4-9]\.|2[3-5]\d\.)/.test(
-        address,
-      ),
-  )?.address;
+  const address = resolved.find(({ address }) => publicIpv4(address))?.address;
   if (!address)
     throw new ApiError("bad_request", "No public IPv4 address found");
   const data = await new Promise<string>((resolve, reject) => {

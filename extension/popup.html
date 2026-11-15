@@ -18,14 +18,9 @@
         <button id="save" class="primary" disabled>Save current tab</button>
       </form>
       <p id="status" role="status"></p>
-      <details id="connection"><summary>API connection</summary>
-        <form id="settings" autocomplete="off">
-          <label>StudyWeave API URL<input type="url" id="server" required></label>
-          <label>Username<input type="text" id="username" spellcheck="false" maxlength="256"></label>
-          <label>Password<input type="password" id="password" maxlength="1024"></label>
-          <small>Use your deployment login for a protected server. Your sign-in lasts until Chrome restarts or the extension reloads.</small>
-          <button type="submit">Connect</button>
-        </form>
+      <button id="open-app" type="button">Open StudyNova / sign in</button>
+      <details><summary>API connection</summary>
+        <form id="settings"><label>StudyWeave API URL<input type="url" id="server" required></label><button type="submit">Connect</button></form>
       </details>
     </main>
     <script type="module" src="popup.js"></script>

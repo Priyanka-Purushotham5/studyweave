@@ -1,55 +1,52 @@
 import { capturePayload, defaultServer, retryNetwork, serverAddress } from "./capture.js";
 
-async function call(origin, path, body, authorization) {
-  const headers = {};
-  if (body) headers["Content-Type"] = "application/json";
-  if (authorization) headers.Authorization = authorization;
-  const response = await retryNetwork(() => fetch(new URL(path, origin), {
-    ...(body ? { method: "POST", body: JSON.stringify(body) } : {}),
-    headers,
-    credentials: authorization ? "omit" : "include",
-    redirect: authorization ? "error" : "follow",
-    signal: AbortSignal.timeout(9000),
-  }));
-  if (response.status === 401) {
-    const message = authorization
-      ? "StudyWeave rejected the username or password. Check your deployment login."
-      : "Sign in with your StudyWeave username and password under API connection.";
-    throw Object.assign(new Error(message), { status: 401 });
+async function call(path, body) {
+  const { server = defaultServer } = await chrome.storage.local.get("server");
+  const origin = serverAddress(server).origin;
+  if (!["/api/tree", "/api/resources"].includes(path)) throw new Error("Unsupported API request.");
+  const tabs = await chrome.tabs.query({ url: `${origin}/*` });
+  const appTab = tabs.find(tab => {
+    try { return tab.id && tab.status === "complete" && new URL(tab.url).origin === origin; }
+    catch { return false; }
+  });
+  if (!appTab) throw new Error("Open and sign in to StudyNova, then return to this page and try again.");
+  let execution;
+  try {
+    execution = await retryNetwork(() => chrome.scripting.executeScript({
+      target: { tabId: appTab.id },
+      world: "MAIN",
+      args: [origin, path, body ?? null],
+      func: async (expectedOrigin, apiPath, payload) => {
+        if (location.origin !== expectedOrigin || !["/api/tree", "/api/resources"].includes(apiPath))
+          return { status: 0, error: "StudyNova tab changed. Please try again." };
+        try {
+          const response = await fetch(apiPath, {
+            ...(payload ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) } : {}),
+            credentials: "same-origin",
+            redirect: "error",
+            signal: AbortSignal.timeout(9000),
+          });
+          return { status: response.status, data: await response.json().catch(() => null) };
+        } catch { return { status: 0, error: "Could not reach StudyNova. Check your connection and try again." }; }
+      },
+    }));
+  } catch {
+    throw new Error("Open and sign in to StudyNova, then return to this page and try again.");
   }
-  if (!response.ok) {
-    const data = await response.json().catch(() => null);
-    throw new Error(data?.error?.message ?? `StudyWeave returned HTTP ${response.status}.`);
-  }
-  return response.json();
-}
-
-async function connect({ server, username, password }) {
-  const { origin, protocol } = serverAddress(server);
-  let authorization;
-  if (username || password) {
-    if (protocol !== "https:") throw new Error("Use an HTTPS API URL to sign in.");
-    if (!username || !password || username.includes(":")) {
-      throw new Error("Enter a username without a colon and your password.");
-    }
-    const bytes = new TextEncoder().encode(`${username}:${password}`);
-    authorization = "Basic " + btoa(Array.from(bytes, byte => String.fromCharCode(byte)).join(""));
-  }
-  const tree = await call(origin, "/api/tree", undefined, authorization);
-  if (!Array.isArray(tree?.subjects)) throw new Error("This server did not return a StudyWeave course list.");
-  if (authorization) await chrome.storage.session.set({ login: { origin, authorization } });
-  else await chrome.storage.session.remove("login");
-  await chrome.storage.local.set({ server: origin });
-  return tree;
+  const result = execution?.[0]?.result;
+  if (!result || result.status === 401)
+    throw new Error("Open and sign in to StudyNova, then return to this page and try again.");
+  if (result.status === 403)
+    throw new Error("StudyNova rejected this request. Check the server origin and try again.");
+  if (result.status < 200 || result.status >= 300)
+    throw new Error(result.error ?? result.data?.error?.message ?? `StudyNova returned HTTP ${result.status}.`);
+  if (path === "/api/tree" && !Array.isArray(result.data?.subjects))
+    throw new Error("This server did not return a StudyWeave course list.");
+  return result.data;
 }
 
 async function handle(message) {
-  if (message.action === "connect") return connect(message);
-  const { server = defaultServer } = await chrome.storage.local.get("server");
-  const { origin, protocol } = serverAddress(server);
-  const { login } = await chrome.storage.session.get("login");
-  const authorization = protocol === "https:" && login?.origin === origin ? login.authorization : undefined;
-  if (message.action === "tree") return call(origin, "/api/tree", undefined, authorization);
+  if (message.action === "tree") return call("/api/tree");
   if (message.action !== "save") throw new Error("Unknown capture action.");
   const { moduleId, subjectId, examId, tabId } = message;
   const tab = await chrome.tabs.get(tabId);
@@ -65,13 +62,13 @@ async function handle(message) {
   }).catch(() => []);
   if (injection?.result && injection.result.url !== initialUrl) throw new Error("The tab changed. Reopen StudyWeave Capture and try again.");
   const page = injection?.result ?? { url: initialUrl, title: tab.title, text: "" };
-  const resource = await call(origin, "/api/resources", capturePayload(moduleId, page), authorization);
+  const resource = await call("/api/resources", capturePayload(moduleId, page));
   await chrome.storage.local.set({ lastSelection: { subjectId, examId, moduleId } });
   return resource;
 }
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id) return false;
-  handle(message).then(result => respond({ result }), error => respond({ error: error.message, status: error.status }));
+  handle(message).then(result => respond({ result }), error => respond({ error: error.message }));
   return true;
 });
