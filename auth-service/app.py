@@ -21,9 +21,9 @@ SESSION_SECONDS = 8 * 60 * 60
 # Landing page content. Emails are optional: a member without one shows name and role only.
 DEMO_URL = os.environ.get('STUDYNOVA_DEMO_URL', '#how')
 TEAM = [
-    {'name': 'Priyanka Purushotham', 'role': 'AI service', 'email': ''},
-    {'name': 'Danush', 'role': 'API, data and deployment', 'email': ''},
-    {'name': 'Rohith', 'role': 'Web app and Chrome extension', 'email': ''},
+    {'name': 'Priyanka Purushotham', 'role': 'AI service', 'email': 'priyankapurushotham5@gmail.com'},
+    {'name': 'Danush Kanchi', 'role': 'API, data and deployment', 'email': 'danushkanchi2001@gmail.com'},
+    {'name': 'Rohith Bangalore Vijaya', 'role': 'Web app and Chrome extension', 'email': 'rohitbv.vips@gmail.com'},
 ]
 LANDING = Path(__file__).with_name('landing.html').read_text(encoding='utf-8')
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
