@@ -153,6 +153,24 @@ describe("Module B acceptance integration", () => {
       error: "AI offline",
     });
   });
+  it("reports an empty concept extraction as a failed build without changing the graph", async () => {
+    const before = await s.all("concepts");
+    fake.call = async (endpoint, body) => {
+      if (endpoint === "/v1/concepts/extract")
+        return { concepts: [], dropped: 1 };
+      throw new Error(`Unexpected AI call: ${endpoint}`);
+    };
+    const response = await request(ctx.app).post(
+      "/api/modules/m_backprop/build",
+    );
+    await ctx.jobs.drain();
+    expect(await s.get("jobs", response.body.jobId)).toMatchObject({
+      status: "failed",
+      error:
+        "No verifiable concepts were generated. Check your materials and AI configuration before trying again.",
+    });
+    expect(await s.all("concepts")).toEqual(before);
+  });
   it("attempt lowers readiness and trace targets weak chain rule", async () => {
     await s.put("concepts", { ...concepts[0], readiness: 80 });
     await s.put("concepts", { ...concepts[1], readiness: 30 });
