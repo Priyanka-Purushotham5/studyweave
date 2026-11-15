@@ -1,8 +1,8 @@
-# StudyWeave Capture
+# StudyNova Capture
 
 Capture a page or YouTube video directly from its browser tab:
 
-1. Install the extension: open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select this `extension` folder. Pin **StudyWeave Capture** to the toolbar. Each teammate installs it once; it is not yet published in the Chrome Web Store.
+1. Install the extension: open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select this `extension` folder. Pin **StudyNova Capture** to the toolbar. Each teammate installs it once; it is not yet published in the Chrome Web Store.
 2. Sign in to `https://studynova.ink` in Chrome and leave that tab open. Create a course, exam, and module if needed.
 3. Open the page or YouTube video you want to save, click the extension icon, select a module, and click **Save current tab**. Refresh StudyNova to see it.
 

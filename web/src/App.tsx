@@ -214,7 +214,7 @@ export default function App() {
   return <div className="app-shell">
     <a className="skip-link" href="#main">Skip to content</a>
     <aside className="sidebar" aria-label="Study workspace">
-      <a className="brand" href="#" onClick={event => { event.preventDefault(); setScreen("map"); }}><span className="brand-icon"><Layers3 size={22}/></span><span>StudyWeave</span></a>
+      <a className="brand" href="#" onClick={event => { event.preventDefault(); setScreen("map"); }}><span className="brand-icon"><Layers3 size={22}/></span><span>StudyNova</span></a>
       <div className="sidebar-body">
         <div className="sidebar-label">WORKSPACE</div>
         <nav aria-label="Workspace">
@@ -294,7 +294,7 @@ export default function App() {
               {!publicDemo && screen !== "plan" && <section className="plan-card" aria-labelledby="next-title"><span className="tile-icon"><CalendarDays size={19}/></span><div><h2 id="next-title">Plan your revision</h2><p>Set a daily study budget for {exam?.name?.toLowerCase() ?? "your exam"}.</p><button onClick={() => setScreen("plan")}>View plan <ArrowRight size={15}/></button></div></section>}
             </div>
           </div>
-        </> : <section className="panel empty start-empty"><BookOpen size={32}/><h1>{loaded ? "Set up your study workspace" : "StudyWeave"}</h1>
+        </> : <section className="panel empty start-empty"><BookOpen size={32}/><h1>{loaded ? "Set up your study workspace" : "StudyNova"}</h1>
           <p>{loaded ? "Create a course, exam, and module to start collecting materials." : error ? "Retry the connection to load your courses." : "Loading your workspace…"}</p>
           {loaded && !publicDemo && <button className="button primary" onClick={() => { setCreateKind(subject ? exam ? "modules" : "exams" : "subjects"); setModal("create"); }}><Plus size={17}/> {subject ? exam ? "Create module" : "Create exam" : "Create course"}</button>}
         </section>}
@@ -327,6 +327,7 @@ export default function App() {
     {detail && <Dialog title={"concept" in detail ? detail.concept.name : "edge" in detail ? "Concept connection" : source?.title ?? "Source evidence"} close={() => setDetail(undefined)}>
       {"concept" in detail && <div className="workspace-form">
         <Readiness value={detail.concept.readiness} cleared={cleared.includes(detail.concept.moduleId)}/><p>{detail.concept.definition}</p>
+        {"speechSynthesis" in window && <button className="button" onClick={() => { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(`${detail.concept.name}. ${detail.concept.definition}`)); }}>Read concept aloud</button>}
         {gapCitations(detail.concept.evidence)}
         {!publicDemo && bestEvidence(detail.concept)?.startSec != null && <button className="button" onClick={() => { selectModule(detail.concept.moduleId, "captions"); setSeekTime(bestEvidence(detail.concept)?.startSec); setDetail(undefined); }}>Open lecture captions <ArrowRight size={16}/></button>}
       </div>}

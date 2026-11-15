@@ -719,4 +719,31 @@ describe("team deployment request limits", () => {
     );
     expect((await request(app).get("/api/tree")).status).toBe(200);
   });
+
+  it("rejects capture from untrusted browser origins in team mode", async () => {
+    const app = createApp(s, fake, {
+      teamMode: true,
+      teamOrigin: "https://studynova.ink",
+    }).app;
+    for (const origin of [
+      "https://evil.example",
+      "chrome-extension://nadcdgdhcblnejfbaoidfbohdfbhkpjn",
+      "null",
+    ]) {
+      const response = await request(app)
+        .post("/api/resources")
+        .set("Origin", origin)
+        .send({});
+      expect(response.status).toBe(403);
+    }
+    // Same-origin writes reach validation; origin-less clients still require the proxy login.
+    expect(
+      (
+        await request(app)
+          .post("/api/resources")
+          .set("Origin", "https://studynova.ink")
+          .send({})
+      ).status,
+    ).toBe(400);
+  });
 });

@@ -81,7 +81,7 @@ export async function fetchText(value: string) {
         lookup: ((_hostname: any, _options: any, callback: any) =>
           callback(null, address, 4)) as any,
         headers: {
-          "user-agent": "StudyWeave/3.0",
+          "user-agent": "StudyNova/3.0",
           accept: "text/html,text/plain",
         },
       },

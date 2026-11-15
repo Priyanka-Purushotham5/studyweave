@@ -1,5 +1,7 @@
 # Same-origin web deployment
 
+> Historical deployment options follow. For the current single-login, host-Caddy architecture, use [TEAM_WORKING_APP.md](TEAM_WORKING_APP.md); the older API-subdomain and port instructions below do not describe that configuration.
+
 The Caddy image is built by `deploy/Web.Dockerfile`: Node 22 runs `npm ci` and the production Vite build, then copies only `web/dist` into the Caddy image. `VITE_API_URL` is empty and `VITE_MOCK=0`, so browsers use same-origin `/api` calls. Caddy proxies `/api/*`, `/healthz`, and `/readyz` to B and serves the SPA with `index.html` fallback. Existing Basic authentication remains enabled. No Node installation is needed on the host.
 
 ## Local verification

@@ -6,7 +6,7 @@ No paid resource has been created. Follow this order: local verification → Atl
 
 **YOUR ACCOUNT/CREDENTIALS REQUIRED.** In your Atlas account:
 
-1. Create a project such as `StudyWeave Demo` and a **Free** cluster. Select a region convenient for your team; no paid upgrade is required for the default cosine fallback. Do not load unrelated sample data.
+1. Create a project such as `StudyNova Demo` and a **Free** cluster. Select a region convenient for your team; no paid upgrade is required for the default cosine fallback. Do not load unrelated sample data.
 2. Create a database user (different from your Atlas login), for example `studyweave_api`, with `readWrite` on the `studyweave` database. Save its password privately.
 3. In Network Access, allow your current laptop IP. Add the approved Vultr host's IP later; avoid opening the database to every IP.
 4. Copy the Node.js driver connection URI and replace its password placeholder locally, encoding special password characters as required by the URI. Save it in **`api/.env`**, never in chat or Git:

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowDownRight, ArrowUpRight, BookOpen, ChevronDown, ChevronRight, FileText, Folder, GraduationCap, ListTree, Maximize2, Minus, Network, Plus } from "lucide-react";
+import { MaterialFlow } from "./MaterialFlow";
 import type { Concept, Edge, Graph, Trace, Tree } from "../../../contracts/types";
 import { colorFor, treeToNodes, type Branch } from "../lib/study";
 
@@ -126,7 +127,7 @@ export function StudyMap({ tree, graph, moduleId, trace, cleared, onModule, onRe
       if (branch.kind === "module") onModule(branch.id);
       else open(branch);
     }}/> : <div className="map-frame" ref={mapFrame}>
-      {view === "concepts" && !nodes.length ? <div className="empty map-empty">Add materials and build this module’s concept web.</div> :
+      {view === "map" ? <MaterialFlow branches={branches} collapsed={collapsed} open={open} toggle={toggle} zoom={zoom} setZoom={setZoom}/> : view === "concepts" && !nodes.length ? <div className="empty map-empty">Add materials and build this module’s concept web.</div> :
         <div className="map-scroll" tabIndex={0} aria-label={view === "concepts" ? "Concept web canvas" : "Material map canvas"}>
           <div className="map-fit" style={{ width: width * scale, height: height * scale }}>
             <div className="map-inner" style={{ width, height, transform: `scale(${scale})` }}>

@@ -1,11 +1,11 @@
-"""Live checks against the real Gemini API. Skipped unless GEMINI_API_KEY is set. Run: pytest -m live"""
+"""Live checks against the real Gemini API. Skipped unless RUN_LIVE_GEMINI_TESTS=1 and GEMINI_API_KEY is set."""
 import os
 
 import pytest
 
 from app.gemini import EMBED_DIM, RealGemini
 
-pytestmark = [pytest.mark.live, pytest.mark.skipif(not os.environ.get("GEMINI_API_KEY"), reason="no GEMINI_API_KEY")]
+pytestmark = [pytest.mark.live, pytest.mark.skipif(os.environ.get("RUN_LIVE_GEMINI_TESTS") != "1" or not os.environ.get("GEMINI_API_KEY"), reason="live Gemini requires explicit opt-in and a key")]
 
 
 def test_live_embed_returns_768_numbers():

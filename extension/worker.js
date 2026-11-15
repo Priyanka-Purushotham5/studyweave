@@ -41,7 +41,7 @@ async function call(path, body) {
   if (result.status < 200 || result.status >= 300)
     throw new Error(result.error ?? result.data?.error?.message ?? `StudyNova returned HTTP ${result.status}.`);
   if (path === "/api/tree" && !Array.isArray(result.data?.subjects))
-    throw new Error("This server did not return a StudyWeave course list.");
+    throw new Error("This server did not return a StudyNova course list.");
   return result.data;
 }
 
@@ -60,7 +60,7 @@ async function handle(message) {
       text: (document.querySelector("article, main, [role='main']") ?? document.body)?.innerText.trim().slice(0, 60_000) ?? "",
     }),
   }).catch(() => []);
-  if (injection?.result && injection.result.url !== initialUrl) throw new Error("The tab changed. Reopen StudyWeave Capture and try again.");
+  if (injection?.result && injection.result.url !== initialUrl) throw new Error("The tab changed. Reopen StudyNova Capture and try again.");
   const page = injection?.result ?? { url: initialUrl, title: tab.title, text: "" };
   const resource = await call("/api/resources", capturePayload(moduleId, page));
   await chrome.storage.local.set({ lastSelection: { subjectId, examId, moduleId } });

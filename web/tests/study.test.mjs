@@ -126,3 +126,11 @@ test("extension captures through a signed-in app tab and preserves its selection
   available = false;
   assert.match((await call({ action: "tree" })).error, /sign in/i);
 });
+
+
+test("extension presents StudyNova branding without changing its origin", () => {
+  const manifest = JSON.parse(readFileSync(new URL("../../extension/manifest.json", import.meta.url)));
+  assert.equal(manifest.name, "StudyNova Capture");
+  assert.equal(manifest.action.default_title, "Save to StudyNova");
+  assert(manifest.host_permissions.includes("https://studynova.ink/*"));
+});

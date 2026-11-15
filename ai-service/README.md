@@ -16,7 +16,7 @@ Docs and try-it page: http://localhost:8001/docs
 ## Test
 
     pytest -q                 # everything except live tests (no key, no network)
-    pytest -m live            # real Gemini checks, needs GEMINI_API_KEY
+    RUN_LIVE_GEMINI_TESTS=1 pytest -m live  # explicitly opt in; requires GEMINI_API_KEY and approval
 
 ## Endpoints
 
@@ -34,4 +34,4 @@ See `../contracts/schemas.json` (the `*Request` / `*Response` defs) and `../cont
 ## Not yet verified against the live API
 
 `RealGemini` (request shapes, Files API upload for audio over 20 MB, YouTube URL input) is written to the public docs
-and unit-tested with a mock transport, but has not been run with a real key. Run `pytest -m live` and `python -m eval.wer_gate` first.
+and unit-tested with a mock transport, but has not been run with a real key. After key, model, quota and cost approval, explicitly opt in with `RUN_LIVE_GEMINI_TESTS=1 pytest -m live` and run `python -m eval.wer_gate`.

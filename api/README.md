@@ -1,4 +1,4 @@
-# StudyWeave 3.0 Module B
+# StudyNova 3.0 Module B
 
 Node 20.19+ / TypeScript / Express / MongoDB. Module A, shared contracts and shared fixtures are integrated from team main. Module B implementation is in `api/`, `deploy/`, and CI. Module B uses no Gemini SDK, endpoint, or key. Deployment passes `GEMINI_API_KEY` only to Module A.
 
