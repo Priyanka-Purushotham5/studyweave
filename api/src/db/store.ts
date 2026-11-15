@@ -27,6 +27,9 @@ export class Store {
       .replaceOne({ id: row.id }, row, { upsert: true });
     return row;
   }
+  async remove(name: string, filter: Document) {
+    return (await this.db.collection(name).deleteMany(filter)).deletedCount;
+  }
   async saveFile(data: Buffer, filename: string, contentType: string) {
     const bucket = new GridFSBucket(this.db);
     const stream = bucket.openUploadStream(filename, {

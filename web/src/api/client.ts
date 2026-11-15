@@ -22,8 +22,10 @@ export class ApiError extends Error {
 
 export const apiUrl = (path: string) => `${base}/api${path}`;
 const id = encodeURIComponent;
-async function request<T>(path: string, body?: object): Promise<T> {
-  const options: RequestInit = body instanceof FormData
+async function request<T>(path: string, body?: object, method?: "DELETE"): Promise<T> {
+  const options: RequestInit = method
+    ? { method }
+    : body instanceof FormData
     ? { method: "POST", body }
     : body
       ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
@@ -31,6 +33,7 @@ async function request<T>(path: string, body?: object): Promise<T> {
   let response: Response;
   try { response = await fetch(apiUrl(path), options); }
   catch { throw new ApiError("offline"); }
+  if (response.status === 204) return undefined as T;
   const data = await response.json().catch(() => null);
   if (!response.ok || data == null) {
     const error = (data as ApiErrorBody | null)?.error;
@@ -53,6 +56,7 @@ export const api = {
   save: (body: { moduleId: string; url: string; type: "web" | "youtube" }) => request<Resource>("/resources", body),
   upload: (file: File, moduleId: string, tag: NonNullable<Resource["tag"]>) =>
     request<Resource>("/resources/upload", multipart(file, "file", { moduleId, tag })),
+  remove: (resourceId: string) => request<void>(`/resources/${id(resourceId)}`, undefined, "DELETE"),
   extraction: (resourceId: string) => request<JobStatus>(`/resources/${id(resourceId)}/status`),
   build: (moduleId: string) => request<{jobId: string}>(`/modules/${id(moduleId)}/build`, {}),
   job: (jobId: string) => request<JobStatus>(`/jobs/${id(jobId)}`),

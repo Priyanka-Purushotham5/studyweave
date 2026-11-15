@@ -102,6 +102,17 @@ export const openapi = {
         }),
       },
     },
+    "/api/resources/{id}": {
+      delete: {
+        summary:
+          "Delete a material and the concepts, links and questions learned only from it",
+        parameters: [param],
+        responses: {
+          "204": { description: "Deleted" },
+          "404": response("Error", "Material not found"),
+        },
+      },
+    },
     "/api/resources/{id}/status": { get: pathOperation("JobStatus") },
     "/api/resources/{id}/file": {
       get: {

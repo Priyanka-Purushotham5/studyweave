@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { ArrowUpRight, FileText, Link2, UploadCloud, Video } from "lucide-react";
+import { ArrowUpRight, FileText, Link2, Trash2, UploadCloud, Video } from "lucide-react";
 import type { Module, Resource } from "../../../contracts/types";
 import { api, waitForJob } from "../api/client";
 
@@ -74,13 +74,24 @@ export function Capture({ mod, run, busy, refresh, done }: {
   </form>;
 }
 
-export function SourceList({ resources, open }: { resources: Resource[]; open: (resource: Resource) => void }) {
+export function SourceList({ resources, open, remove, busy = false }: {
+  resources: Resource[]; open: (resource: Resource) => void; remove?: (resource: Resource) => void; busy?: boolean;
+}) {
+  const [confirming, setConfirming] = useState("");
   return resources.length ? <div className="source-list">{resources.map(resource => {
     const Icon = resource.type === "youtube" ? Video : resource.type === "web" ? Link2 : FileText;
-    return <button key={resource.id} className="source-row" onClick={() => open(resource)}>
-      <span className={`source-icon ${resource.type}`}><Icon size={16}/></span>
-      <span><strong>{resource.title}</strong><small>{resource.type.toUpperCase()}{resource.type === "youtube" ? " · Approximate timestamps" : ""}{resource.extractionStatus !== "done" ? ` · ${resource.extractionStatus === "pending" ? "Processing" : "Text unavailable"}` : ""}</small></span>
-      <ArrowUpRight size={15}/>
-    </button>;
+    return <div key={resource.id} className="source-item">
+      <button className="source-row" onClick={() => open(resource)}>
+        <span className={`source-icon ${resource.type}`}><Icon size={16}/></span>
+        <span><strong>{resource.title}</strong><small>{resource.type.toUpperCase()}{resource.type === "youtube" ? " · Approximate timestamps" : ""}{resource.extractionStatus !== "done" ? ` · ${resource.extractionStatus === "pending" ? "Processing" : "Text unavailable"}` : ""}</small></span>
+        <ArrowUpRight size={15}/>
+      </button>
+      {remove && confirming !== resource.id && <button className="icon-button source-delete" aria-label={`Delete ${resource.title}`} title="Delete" disabled={busy} onClick={() => setConfirming(resource.id)}><Trash2 size={15}/></button>}
+      {remove && confirming === resource.id && <div className="source-confirm" role="group" aria-label={`Confirm deleting ${resource.title}`}>
+        <p>Delete <strong>{resource.title}</strong>? Concepts, links and questions that come only from it are removed too. This can't be undone.</p>
+        <div><button className="button danger" disabled={busy} onClick={() => { setConfirming(""); remove(resource); }}>Delete material</button>
+        <button className="button" autoFocus onClick={() => setConfirming("")}>Cancel</button></div>
+      </div>}
+    </div>;
   })}</div> : <div className="empty">Add your first study material.</div>;
 }

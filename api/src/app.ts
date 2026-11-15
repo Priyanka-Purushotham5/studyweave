@@ -59,7 +59,11 @@ export function createApp(
     let windowStarted = Date.now();
     let interactions = 0;
     app.use((req, res, next) => {
-      if (req.method !== "POST" || !req.path.startsWith("/api/")) return next();
+      if (
+        !["POST", "DELETE"].includes(req.method) ||
+        !req.path.startsWith("/api/")
+      )
+        return next();
       const origin = req.get("origin");
       if (origin && origin !== options.teamOrigin)
         return res.status(403).json({

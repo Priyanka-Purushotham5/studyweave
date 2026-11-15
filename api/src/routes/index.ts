@@ -148,6 +148,13 @@ export function routes(
       await streamFile(s, row.audioFileId, req, res);
     }),
   );
+  r.delete(
+    "/resources/:id",
+    handle(async (req: any, res: any) => {
+      await resources.remove(req.params.id);
+      res.status(204).end();
+    }),
+  );
   r.post(
     "/resources",
     validate("resource"),
