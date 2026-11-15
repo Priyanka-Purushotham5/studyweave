@@ -3,6 +3,7 @@ import { defaultServer, selection, serverAddress, suggestModule } from "./captur
 const get = id => document.getElementById(id);
 const subject = get("subject"), exam = get("exam"), module = get("module");
 const save = get("save"), status = get("status"), server = get("server"), suggestion = get("suggestion");
+const settings = get("settings"), username = get("username"), password = get("password");
 let tree = { subjects: [] };
 let tab;
 let suggested;
@@ -12,6 +13,7 @@ function message(text = "", error = false) {
 }
 async function worker(action, data = {}) {
   const response = await chrome.runtime.sendMessage({ action, ...data });
+  if (response?.status === 401) get("connection").open = true;
   if (!response || response.error) throw new Error(response?.error ?? "Capture worker did not respond.");
   return response.result;
 }
@@ -29,17 +31,22 @@ function render(preferred = {}) {
   save.disabled = !module.value || !/^https?:\/\//i.test(tab?.url ?? "");
   suggestion.hidden = !suggested || suggested.moduleId === module.value;
 }
-async function load() {
+async function load(fetchTree = () => worker("tree")) {
   message("Loading courses…");
   save.disabled = true;
   try {
     const { lastSelection } = await chrome.storage.local.get("lastSelection");
-    tree = await worker("tree");
+    tree = await fetchTree();
     suggested = tab && suggestModule(tree, tab);
     if (suggested) suggestion.textContent = `Use suggested module: ${suggested.module.name}`;
     render(lastSelection);
     message(!/^https?:\/\//i.test(tab?.url ?? "") ? "Open a web page to capture it." : module.value ? "" : "Create a module in StudyWeave first.");
-  } catch (error) { message(error.message, true); }
+  } catch (error) {
+    tree = { subjects: [] };
+    suggested = undefined;
+    render();
+    message(error.message, true);
+  }
 }
 subject.addEventListener("change", () => render({ subjectId: subject.value }));
 exam.addEventListener("change", () => render({ subjectId: subject.value, examId: exam.value }));
@@ -64,16 +71,24 @@ get("capture").addEventListener("submit", async event => {
     for (const control of controls) if (control !== save) control.disabled = false;
   }
 });
-get("settings").addEventListener("submit", async event => {
+settings.addEventListener("submit", async event => {
   event.preventDefault();
+  const controls = [...settings.elements];
   try {
     const url = serverAddress(server.value);
+    const credentials = { username: username.value.trim(), password: password.value };
+    for (const control of controls) control.disabled = true;
     if (!await chrome.permissions.request({ origins: [`${url.protocol}//${url.hostname}/*`] })) {
       throw new Error("Allow access to the API origin to connect.");
     }
-    await chrome.storage.local.set({ server: url.origin });
-    await load();
+    await load(async () => {
+      const result = await worker("connect", { server: url.origin, ...credentials });
+      server.value = url.origin;
+      password.value = "";
+      return result;
+    });
   } catch (error) { message(error.message, true); }
+  finally { for (const control of controls) control.disabled = false; }
 });
 
 try {
