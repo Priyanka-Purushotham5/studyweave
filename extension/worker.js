@@ -23,6 +23,7 @@ async function call(path, body) {
           const response = await fetch(apiPath, {
             ...(payload ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) } : {}),
             credentials: "same-origin",
+            redirect: "error",
             signal: AbortSignal.timeout(9000),
           });
           return { status: response.status, data: await response.json().catch(() => null) };
@@ -33,10 +34,14 @@ async function call(path, body) {
     throw new Error("Open and sign in to StudyNova, then return to this page and try again.");
   }
   const result = execution?.[0]?.result;
-  if (!result || result.status === 401 || result.status === 403)
+  if (!result || result.status === 401)
     throw new Error("Open and sign in to StudyNova, then return to this page and try again.");
+  if (result.status === 403)
+    throw new Error("StudyNova rejected this request. Check the server origin and try again.");
   if (result.status < 200 || result.status >= 300)
     throw new Error(result.error ?? result.data?.error?.message ?? `StudyNova returned HTTP ${result.status}.`);
+  if (path === "/api/tree" && !Array.isArray(result.data?.subjects))
+    throw new Error("This server did not return a StudyWeave course list.");
   return result.data;
 }
 

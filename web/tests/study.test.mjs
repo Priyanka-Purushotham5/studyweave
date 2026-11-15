@@ -80,11 +80,13 @@ test("extension captures through a signed-in app tab and preserves its selection
   let listener;
   let server = "https://first.example";
   let available = true;
+  let responseStatus = 200;
+  let changedOrigin = false;
   const requests = [];
   const writes = [];
   t.mock.method(globalThis, "fetch", async (url, options) => {
-    requests.push({ url: String(url), body: options.body && JSON.parse(options.body), credentials: options.credentials });
-    return Response.json({ ok: true });
+    requests.push({ url: String(url), body: options.body && JSON.parse(options.body), credentials: options.credentials, redirect: options.redirect });
+    return Response.json(url === "/api/tree" ? { subjects: [] } : { ok: true }, { status: responseStatus });
   });
   globalThis.chrome = {
     runtime: { id: "addon", onMessage: { addListener(callback) { listener = callback; } } },
@@ -95,7 +97,7 @@ test("extension captures through a signed-in app tab and preserves its selection
     },
     scripting: { executeScript: async options => {
       if (options.world === "MAIN") {
-        globalThis.location = { origin: server };
+        globalThis.location = { origin: changedOrigin ? "https://other.example" : server };
         return [{ result: await options.func(...options.args) }];
       }
       return [{ result: { url: "https://example.com/notes", title: "Notes", text: "Backpropagation." } }];
@@ -104,14 +106,23 @@ test("extension captures through a signed-in app tab and preserves its selection
   t.after(() => { delete globalThis.chrome; delete globalThis.location; });
   await import("../../extension/worker.js");
   const call = message => new Promise(resolve => listener(message, { id: "addon" }, resolve));
-  assert.deepEqual(await call({ action: "tree" }), { result: { ok: true } });
+  assert.deepEqual(await call({ action: "tree" }), { result: { subjects: [] } });
   server = "https://second.example";
   const lastSelection = { subjectId: "s_nn", examId: "e_midterm", moduleId: "m_backprop" };
   assert.deepEqual(await call({ action: "save", tabId: 1, ...lastSelection }), { result: { ok: true } });
   assert.deepEqual(requests.map(request => request.url), ["/api/tree", "/api/resources"]);
-  assert(requests.every(request => request.credentials === "same-origin"));
+  assert(requests.every(request => request.credentials === "same-origin" && request.redirect === "error"));
   assert.deepEqual(requests[1].body, { moduleId: "m_backprop", type: "web", url: "https://example.com/notes", title: "Notes", text: "Backpropagation." });
   assert.deepEqual(writes, [{ lastSelection }]);
+  responseStatus = 401;
+  assert.match((await call({ action: "tree" })).error, /sign in/i);
+  responseStatus = 403;
+  assert.match((await call({ action: "tree" })).error, /rejected/i);
+  responseStatus = 200;
+  changedOrigin = true;
+  const count = requests.length;
+  assert.match((await call({ action: "tree" })).error, /tab changed/i);
+  assert.equal(requests.length, count);
   available = false;
   assert.match((await call({ action: "tree" })).error, /sign in/i);
 });

@@ -39,7 +39,12 @@ async function load() {
     if (suggested) suggestion.textContent = `Use suggested module: ${suggested.module.name}`;
     render(lastSelection);
     message(!/^https?:\/\//i.test(tab?.url ?? "") ? "Open a web page to capture it." : module.value ? "" : "Create a module in StudyWeave first.");
-  } catch (error) { message(error.message, true); }
+  } catch (error) {
+    tree = { subjects: [] };
+    suggested = undefined;
+    render();
+    message(error.message, true);
+  }
 }
 subject.addEventListener("change", () => render({ subjectId: subject.value }));
 exam.addEventListener("change", () => render({ subjectId: subject.value, examId: exam.value }));
@@ -70,14 +75,17 @@ get("open-app").addEventListener("click", async () => {
 });
 get("settings").addEventListener("submit", async event => {
   event.preventDefault();
+  const controls = [...event.currentTarget.elements];
   try {
     const url = serverAddress(server.value);
+    for (const control of controls) control.disabled = true;
     if (!await chrome.permissions.request({ origins: [`${url.protocol}//${url.hostname}/*`] })) {
       throw new Error("Allow access to the API origin to connect.");
     }
     await chrome.storage.local.set({ server: url.origin });
     await load();
   } catch (error) { message(error.message, true); }
+  finally { for (const control of controls) control.disabled = false; }
 });
 
 try {
