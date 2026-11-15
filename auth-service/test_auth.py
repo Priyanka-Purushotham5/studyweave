@@ -75,3 +75,25 @@ def test_login_csrf_rate_limit_and_fail_closed(setup_auth, monkeypatch):
     monkeypatch.setattr(auth, 'CREDENTIAL_FILE', '/does/not/exist')
     assert sign_in(c).status_code == 503
     assert check(c).status_code == 401
+
+
+def test_landing_page_is_public_static_and_complete(setup_auth):
+    r = setup_auth.get('/login')
+    body = r.text
+    assert r.status_code == 200 and "default-src 'none'" in r.headers['content-security-policy']
+    assert '<script' not in body.lower() and '{{' not in body
+    assert 'action="/auth/login"' in body and 'href="#signin"' in body
+    assert 'HackUMass XIV' in body and all(member['name'] in body for member in auth.TEAM)
+    assert 'class="signin "' in body  # dialog closed until the visitor asks for it
+
+
+def test_failed_sign_in_reopens_dialog_with_message(setup_auth):
+    r = sign_in(setup_auth, 'wrong')
+    assert r.status_code == 401
+    assert 'class="signin open"' in r.text and 'Incorrect username or password.' in r.text
+
+
+def test_team_email_is_escaped_and_optional(monkeypatch):
+    monkeypatch.setattr(auth, 'TEAM', [{'name': 'A<b>', 'role': 'r', 'email': 'a"b@x.edu'}, {'name': 'B', 'role': 'r', 'email': ''}])
+    out = auth.team_html()
+    assert 'A&lt;b&gt;' in out and 'mailto:a&quot;b@x.edu' in out and out.count('mailto:') == 1
