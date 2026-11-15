@@ -21,6 +21,7 @@ def handlers(route):
     return result
 
 def validate(config):
+    require(set(config) == {'apps'} and set(config['apps']) == {'http'} and set(config['apps']['http']) == {'servers'})
     servers = config['apps']['http']['servers']
     require(len(servers) == 1)
     server = next(iter(servers.values()))
@@ -50,7 +51,7 @@ def validate(config):
     require(set(app) == {'handler', 'upstreams'})
     require(auth.get('upstreams') == [{'dial': '127.0.0.1:3009'}] and auth.get('rewrite') == {'method': 'GET', 'uri': '/auth/check'})
     require(app.get('upstreams') == [{'dial': '127.0.0.1:3007'}])
-    require(len(auth.get('handle_response', [])) == 1 and auth['handle_response'][0].get('match') == {'status_code': [2]})
+    require(len(auth.get('handle_response', [])) == 1 and set(auth['handle_response'][0]) == {'match', 'routes'} and auth['handle_response'][0].get('match') == {'status_code': [2]})
     require(auth['handle_response'][0].get('routes') == [{'handle': [{'handler': 'vars'}]}])
     header = auth.get('headers', {}).get('request', {}).get('set', {})
     require(header == {'X-Forwarded-Method': ['{http.request.method}'], 'X-Forwarded-Uri': ['{http.request.uri}'], 'X-Real-Ip': ['{http.request.remote.host}']})

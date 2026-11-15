@@ -39,5 +39,8 @@ class CaddyPolicyTests(unittest.TestCase):
         server['listen'] = [':443']
         server['trusted_proxies'] = {'source': 'static', 'ranges': ['0.0.0.0/0']}
         with self.assertRaises(ValueError): policy.validate(self.config)
+    def test_unreviewed_extra_app_is_rejected(self):
+        self.config['apps']['unreviewed'] = {}
+        with self.assertRaises(ValueError): policy.validate(self.config)
 
 if __name__ == '__main__': unittest.main()
