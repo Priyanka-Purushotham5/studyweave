@@ -7,7 +7,7 @@ Model names come from the environment; use the names your key lists in AI Studio
 (python -m eval.probe_models shows which ones answer right now):
   GEMINI_MODEL (text and video, default gemini-3.5-flash), GEMINI_FALLBACK_MODELS (comma list),
   GEMINI_EMBED_MODEL (default gemini-embedding-001), GEMINI_TRANSCRIBE_MODEL (optional),
-  GEMINI_TIMEOUT (seconds per attempt, default 25), GEMINI_DEADLINE (seconds for all fallbacks, default 50).
+  GEMINI_TIMEOUT (seconds per attempt, default 40), GEMINI_DEADLINE (seconds for all fallbacks, default 55).
 RealGemini has been written to the public REST docs but not yet run against the live API.
 """
 
@@ -90,8 +90,8 @@ def _should_fall_back(err: ApiError) -> bool:
 class RealGemini(GeminiClient):
     """Text calls try GEMINI_MODEL, then each of GEMINI_FALLBACK_MODELS, within GEMINI_DEADLINE seconds.
 
-    Module B gives each call to A 60 seconds, so the default deadline (50 s) and per-attempt
-    timeout (25 s) keep A's retries inside that window.
+    Module B gives each call to A 60 seconds. Each attempt gets 40 s (a long lecture deck needs it);
+    fast failures (429, 503, 404) still fall back to the next model, and no new attempt starts after 55 s.
     """
 
     def __init__(self, api_key: str | None = None, client: httpx.Client | None = None, timeout: float | None = None,
@@ -101,8 +101,8 @@ class RealGemini(GeminiClient):
         self.models = _model_chain(self.model, os.environ.get("GEMINI_FALLBACK_MODELS", DEFAULT_FALLBACKS))
         self.embed_model = os.environ.get("GEMINI_EMBED_MODEL", "gemini-embedding-001")
         self.transcribe_model = os.environ.get("GEMINI_TRANSCRIBE_MODEL", "")
-        self.timeout = timeout if timeout is not None else float(os.environ.get("GEMINI_TIMEOUT", "25"))
-        self.deadline = deadline if deadline is not None else float(os.environ.get("GEMINI_DEADLINE", "50"))
+        self.timeout = timeout if timeout is not None else float(os.environ.get("GEMINI_TIMEOUT", "40"))
+        self.deadline = deadline if deadline is not None else float(os.environ.get("GEMINI_DEADLINE", "55"))
         self.http = client or httpx.Client(timeout=self.timeout)
         self.clock, self.sleep = clock, sleep
         self.last_model: str | None = None  # which model answered the last text call (for reports)
