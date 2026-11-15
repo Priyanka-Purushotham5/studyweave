@@ -15,13 +15,13 @@ Compared against all 21 pages of the November 13, 2026 *StudyWeave 3.0: Module S
 | A7 | Implemented | Grounded questions, difficulty, filtering; `test_questions.py`. |
 | A8 | Implemented | Grounded answer/refusal; `test_answer.py`. |
 | A9 | Implemented | Glossary filtering and deduplication; `test_glossary.py`. |
-| A10 | Partial / external | Fake transcription and large-file path tested; real five-minute clip requires approved Gemini credentials and model. |
+| A10 | Implemented locally / live verification blocked | Fake transcription and large-file path tested; real five-minute clip requires approved Gemini credentials and model. |
 | A11 | Implemented with caveat | Flagging, corrections and fake hints tested in `test_flagging.py`; tuning on a real clip remains unverified. |
-| A12 | Partial / external | WER scripts and fake tests exist; real with/without-hints measurement requires reference clip and approved live AI. |
+| A12 | Implemented locally / evaluation unverified | WER scripts and fake tests exist; real with/without-hints measurement requires reference clip and approved live AI. |
 | A13 | Implemented | Numerical double-solve and mismatch rejection; `test_numerics.py`; live agreement measurement remains outstanding. |
 | A14 | Implemented | Paper-to-concept tagging; `test_papers_video_suggest.py`. |
 | A15 | Implemented with caveat | Video interface and timestamp policy tested with fake output; real YouTube transcript unverified. |
-| A16 | Partial / external | Evaluation scripts and tests exist; 100 real generated items and 30 human-rated edges still needed. |
+| A16 | Implemented locally / evaluation unverified | Evaluation scripts and tests exist; 100 real generated items and 30 human-rated edges still needed. |
 | A17 | Implemented | Optional module suggestion endpoint and tests; UI uses local title matching rather than calling A. |
 
 ## Module B — API, data and deploy
@@ -41,8 +41,8 @@ Compared against all 21 pages of the November 13, 2026 *StudyWeave 3.0: Module S
 | B11 | Implemented | Persistent cache and backoff; `api.test.ts`, `http-ai.test.ts`. |
 | B12 | Implemented | Idempotent fixture seed for local/test; production seed endpoint disabled by design. |
 | B13 | Implemented | Paper weights, priorities and revision plan; core/API tests. |
-| B14 | Partial / external | Docker, Caddy and CI exist; current production service and smoke require authorized live verification. |
-| B15 | Partial / external | Atlas index definition and checking exist; current external index status not verified in this branch. |
+| B14 | Implemented locally / production unverified | Docker, Caddy and CI exist; current production service and smoke require authorized live verification. |
+| B15 | Implemented locally / external state unverified | Atlas index definition and checking exist; current external index status not verified in this branch. |
 | B16 | Implemented | Ordered root-first revision path; core and API tests. |
 
 ## Module C — web app and extension
@@ -62,7 +62,7 @@ Compared against all 21 pages of the November 13, 2026 *StudyWeave 3.0: Module S
 | C11 | Partial | Read-aloud, preferences, jest-axe checks on readiness/quiz/battle components and automated browser axe checks exist; remaining components need individual jest-axe checks and a human screen-reader audit is not signed off. |
 | C12 | Implemented | Revision plan and empty state; browser test. |
 | C13 | Missing / product decision | QR-based multi-user live battle and cheat sheet need a collaboration/session design and shared API contracts; user chose to keep this blocked pending team agreement. |
-| C14 | Partial | Local title-based suggestion and manual selection exist; no A-backed suggestion call. |
+| C14 | Implemented locally | The PDF requires a suggestion chip and acceptance/change behavior, not AI-backed selection. Local title matching supplies the suggestion; popup tests verify both choices send the selected module ID. A17's AI suggestion endpoint is an optional separate capability and is not wired into the popup. |
 
 ## Integration and operational checks
 
@@ -79,3 +79,19 @@ Compared against all 21 pages of the November 13, 2026 *StudyWeave 3.0: Module S
 Pitch metrics (real WER, 100-item citation rate, two-person 30-edge rating, 20-case root hit rate, numerical agreement, Lighthouse), Devpost/DEV submissions, credits, backup video, human accessibility sign-off and rehearsals are not established by automated local tests. The specification's contract freeze remains authoritative; `contracts/` and `fixtures/` are unchanged.
 
 Branding deliberately leaves storage keys (`studyweave-*`), MongoDB database names, shared schema identifiers, package names, image names and internal paths unchanged for compatibility. The project directory and historical source PDF also retain their names.
+
+## Remaining checklist and rough effort
+
+Estimates assume an available test environment and do not include time waiting for approvals, accounts, reviewers or suitable recordings.
+
+| Item | Type and evidence | Approximate effort |
+| --- | --- | --- |
+| C13 QR multiplayer and cheat sheet | Missing implementation; blocked by owner's decision pending behavior and contract agreement. | Design 0.5–2 days; implementation unknown until agreed. |
+| I5 real extension toolbar on this branch, including signed-out UI | Testing gap; prior production capture passed on PR #8, but does not prove this revision. | 1–3 hours with working Chrome UI access. |
+| C11/I6 screen-reader review and remaining component-level accessibility checks | Testing gap; keyboard and selected axe tests pass locally. | 0.5–2 days, plus fixes if findings occur. |
+| A10–A12/A15, I8 live transcription and real-model workflow | Testing/evaluation blocked by explicit real-Gemini approval, quota controls and reference material; fake tests do not establish quality. | 1–3 days after approval and inputs; remediation unknown. |
+| A16 and pitch metrics | Evaluation gap: real generated items, human edge ratings, WER, live numerical agreement and Lighthouse evidence absent. | 1–3 days plus human rater availability; fixes unknown. |
+| B14–B15/I7 deployment, authenticated smoke and Atlas index | Local configuration exists; this branch has not been deployed or checked against current Atlas. | 1–3 hours after deployment approval; environment issues may extend this. |
+| C6 extension publication | Distribution step unverified; unpacked extension available. | Depends on store requirements and account approval. |
+| C14 AI-backed suggestion | Not required by C14 acceptance tests; optional enhancement only. A17 exists separately. | 0.5–2 days if team requests integration and agrees on the backend interface. |
+| Pitch submissions, credits, backup video and rehearsals | Deliverable/coordination gaps, not code implementation. | Depends on team assets and deadlines. |

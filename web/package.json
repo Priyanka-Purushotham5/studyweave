@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:browser": "node --test tests/browser.mjs",
-    "test:components": "vitest run --environment jsdom tests/components.test.tsx"
+    "test:components": "vitest run --environment jsdom tests/components.test.tsx tests/extension-popup.test.ts"
   },
   "dependencies": {
     "@xyflow/react": "^12.12.1",
