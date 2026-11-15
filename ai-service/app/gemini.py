@@ -5,7 +5,7 @@ FakeGemini serves fixtures/ai_raw/*.json so tests and other modules never need a
 
 Model names come from the environment; use the names your key lists in AI Studio
 (python -m eval.probe_models shows which ones answer right now):
-  GEMINI_MODEL (text and video, default gemini-flash-latest), GEMINI_FALLBACK_MODELS (comma list),
+  GEMINI_MODEL (text and video, default gemini-3.5-flash), GEMINI_FALLBACK_MODELS (comma list),
   GEMINI_EMBED_MODEL (default gemini-embedding-001), GEMINI_TRANSCRIBE_MODEL (optional),
   GEMINI_TIMEOUT (seconds per attempt, default 25), GEMINI_DEADLINE (seconds for all fallbacks, default 50).
 RealGemini has been written to the public REST docs but not yet run against the live API.
@@ -66,8 +66,11 @@ class GeminiClient:
 # --------------------------------------------------------------------------- real client
 
 
-DEFAULT_MODEL = "gemini-flash-latest"
-DEFAULT_FALLBACKS = "gemini-3.5-flash,gemini-2.5-flash-lite"
+# Measured with a new free-tier key on 2026-11-15 (python -m eval.probe_models):
+# gemini-3.5-flash 2.0 s OK, gemini-flash-lite-latest 0.6 s OK; flash-latest and 3.8-flash timed out;
+# 2.5-flash and 2.5-flash-lite are no longer served to new keys.
+DEFAULT_MODEL = "gemini-3.5-flash"
+DEFAULT_FALLBACKS = "gemini-flash-lite-latest"
 
 
 def _model_chain(primary: str, fallbacks: str) -> list[str]:

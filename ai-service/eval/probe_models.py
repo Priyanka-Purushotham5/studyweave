@@ -4,8 +4,8 @@
   python -m eval.probe_models                       # default candidates
   python -m eval.probe_models gemini-3.8-flash gemini-flash-latest
 
-Sends one tiny JSON request per model and prints status and seconds. Pick the fastest OK model
-as GEMINI_MODEL and the next ones as GEMINI_FALLBACK_MODELS (comma-separated).
+Sends one tiny JSON request per model and prints status and seconds. The suggestion ranks by speed only:
+prefer a full model (gemini-3.5-flash) over a lite one as GEMINI_MODEL when both answer, since quality matters more.
 """
 
 from __future__ import annotations
@@ -16,8 +16,7 @@ import time
 from app.errors import ApiError
 from app.gemini import RealGemini
 
-CANDIDATES = ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-2.5-flash",
-              "gemini-2.5-flash-lite", "gemini-flash-lite-latest"]
+CANDIDATES = ["gemini-3.5-flash", "gemini-flash-lite-latest", "gemini-flash-latest", "gemini-3.8-flash"]
 
 
 def probe(gem: RealGemini, model: str) -> tuple[str, float]:
