@@ -56,7 +56,8 @@ def team_html():
     items = []
     for member in TEAM:
         email = html.escape(member.get('email', ''), quote=True)
-        link = f'<a href="mailto:{email}">{email}</a>' if email else ''
+        shown = email.replace('@', '<wbr>@')  # wrap only before the @, never mid-word
+        link = f'<a href="mailto:{email}">{shown}</a>' if email else ''
         items.append(f'<li><strong>{html.escape(member["name"])}</strong><span>{html.escape(member["role"])}</span>{link}</li>')
     return ''.join(items)
 
