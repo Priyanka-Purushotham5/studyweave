@@ -186,6 +186,17 @@ export default function App() {
     }, false);
   }
 
+  function removeSource(resource: Resource) {
+    void run(async () => {
+      await api.remove(resource.id);
+      if (source?.id === resource.id) setDetail(undefined);
+      setTrace(null);
+      await refresh();
+      if (subject) await refreshGraph(subject.id);
+      setNotice(`Deleted ${resource.title}.`);
+    }, false);
+  }
+
   function build() {
     if (!mod || !subject) return;
     let jobId = "";
@@ -294,7 +305,7 @@ export default function App() {
                 <div className="panel-head"><div className="panel-title"><span className="tile-icon blue"><BookOpen size={17}/></span><div><h2 id="materials-title">Materials</h2><p>{mod.resources.length} {mod.resources.length === 1 ? "source" : "sources"} in this module</p></div></div>
                   {!publicDemo && <button className="icon-button" aria-label="Add a source" title="Add a source" disabled={busy} onClick={() => setModal("capture")}><Plus size={19}/></button>}
                 </div>
-                <SourceList resources={mod.resources} open={openResource}/>
+                <SourceList resources={mod.resources} open={openResource} busy={busy} remove={publicDemo ? undefined : removeSource}/>
                 {!publicDemo && <div className="panel-footer"><button className="button wide" disabled={busy || !mod.resources.some(item => item.extractionStatus === "done")} onClick={build}><Sparkles size={16}/> Build concept web</button></div>}
               </section>
               {!publicDemo && screen !== "plan" && <section className="plan-card" aria-labelledby="next-title"><span className="tile-icon"><CalendarDays size={19}/></span><div><h2 id="next-title">Plan your revision</h2><p>Set a daily study budget for {exam?.name?.toLowerCase() ?? "your exam"}.</p><button onClick={() => setScreen("plan")}>View plan <ArrowRight size={15}/></button></div></section>}

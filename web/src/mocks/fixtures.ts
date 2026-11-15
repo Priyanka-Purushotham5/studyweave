@@ -25,6 +25,16 @@ function moduleById(id: string) {
 
 export function demoFile(resourceId: string) { return files.get(resourceId) ?? (resourceId === "r1" ? demoSlides : undefined); }
 
+export function removeResource(id: string) {
+  const owner = tree.subjects.flatMap(s => s.exams.flatMap(e => e.modules)).find(m => m.resources.some(r => r.id === id));
+  if (!owner) throw new ApiError("not_found", "Material not found");
+  owner.resources = owner.resources.filter(r => r.id !== id);
+  const gone = new Set(graph.nodes.filter(n => n.evidence.length && n.evidence.every(e => e.resourceId === id)).map(n => n.id));
+  graph.nodes = graph.nodes.filter(n => !gone.has(n.id)).map(n => ({ ...n, evidence: n.evidence.filter(e => e.resourceId !== id) }));
+  graph.edges = graph.edges.filter(e => !gone.has(e.from) && !gone.has(e.to) && e.evidence.from.resourceId !== id && e.evidence.to.resourceId !== id);
+  saveTree();
+  localStorage.setItem("studyweave-demo-graph", JSON.stringify(graph));
+}
 function saveTree() { localStorage.setItem("studyweave-demo-tree", JSON.stringify(tree)); }
 
 export function respond(path: string, payload?: object): unknown {

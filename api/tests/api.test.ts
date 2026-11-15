@@ -747,3 +747,132 @@ describe("team deployment request limits", () => {
     ).toBe(400);
   });
 });
+
+describe("deleting materials", () => {
+  beforeEach(async () => seed(s));
+  const cites = (rows: any[], id: string) =>
+    JSON.stringify(rows).includes(`"resourceId":"${id}"`);
+  it("removes the material and everything learned only from it", async () => {
+    const built = await request(ctx.app).post("/api/modules/m_backprop/build");
+    await ctx.jobs.drain();
+    expect((await s.get("jobs", built.body.jobId)).status).toBe("done");
+    // one concept is also backed by a second material, so it must survive
+    await s.put("resources", {
+      id: "r_notes",
+      moduleId: "m_backprop",
+      type: "web",
+      tag: "notes",
+      title: "Notes",
+      hash: "notes",
+      extractionStatus: "done",
+      pages: [{ n: 1, text: "chain rule notes", resourceId: "r_notes" }],
+    });
+    const keep = await s.get<any>("concepts", "c_chain_rule");
+    await s.put("concepts", {
+      ...keep,
+      evidence: [
+        ...keep.evidence,
+        { resourceId: "r_notes", page: 1, quote: "chain rule notes" },
+      ],
+    });
+    const before = await s.all<any>("concepts");
+    const onlyR1 = before
+      .filter((c) => c.evidence.every((e: any) => e.resourceId === "r_slides"))
+      .map((c) => c.id);
+    for (const id of onlyR1)
+      await s.put("attempts", {
+        id: "a_" + id,
+        questionId: "q",
+        conceptId: id,
+        correct: false,
+        createdAt: 1,
+      });
+    const res = await request(ctx.app).delete("/api/resources/r_slides");
+    expect(res.status).toBe(204);
+    await ctx.jobs.drain();
+    expect(await s.get("resources", "r_slides")).toBeNull();
+    const concepts = await s.all<any>("concepts");
+    expect(cites(concepts, "r_slides")).toBe(false);
+    expect(onlyR1.length).toBeGreaterThan(0);
+    expect(concepts.map((c) => c.id)).toEqual(["c_chain_rule"]);
+    expect(cites(await s.all("edges"), "r_slides")).toBe(false);
+    expect(cites(await s.all("questions"), "r_slides")).toBe(false);
+    const ids = new Set(concepts.map((c) => c.id));
+    for (const e of await s.all<any>("edges"))
+      expect(ids.has(e.from) && ids.has(e.to)).toBe(true);
+    for (const a of await s.all<any>("attempts"))
+      expect(onlyR1).not.toContain(a.conceptId);
+    const tree = await request(ctx.app).get("/api/tree");
+    expect(JSON.stringify(tree.body)).not.toContain('"id":"r_slides"');
+    expect(
+      (await request(ctx.app).delete("/api/resources/r_slides")).status,
+    ).toBe(404);
+  });
+  it("deletes the stored file and allows the same file to be uploaded again", async () => {
+    const up = async () =>
+      request(ctx.app)
+        .post("/api/resources/upload")
+        .field("moduleId", "m_backprop")
+        .field("tag", "notes")
+        .attach("file", Buffer.from("%PDF-1.7 delete me"), "del.pdf");
+    const first = await up();
+    await ctx.jobs.drain();
+    const files = await s.db.collection("fs.files").countDocuments();
+    expect(
+      (await request(ctx.app).delete(`/api/resources/${first.body.id}`)).status,
+    ).toBe(204);
+    expect(await s.db.collection("fs.files").countDocuments()).toBe(files - 1);
+    const second = await up();
+    expect(second.status).toBe(201);
+    expect(second.body.id).not.toBe(first.body.id);
+  });
+  it("a material deleted while processing is not brought back", async () => {
+    const res = await request(ctx.app)
+      .post("/api/resources/upload")
+      .field("moduleId", "m_backprop")
+      .field("tag", "notes")
+      .attach("file", Buffer.from("%PDF-1.7 in flight"), "busy.pdf");
+    await request(ctx.app).delete(`/api/resources/${res.body.id}`);
+    await ctx.jobs.drain();
+    expect(await s.get("resources", res.body.id)).toBeNull();
+  });
+  it("deleting a past paper recomputes exam weights", async () => {
+    const ids: string[] = [];
+    for (let i = 0; i < 2; i++) {
+      const paper = await request(ctx.app)
+        .post("/api/resources/upload")
+        .field("moduleId", "m_backprop")
+        .field("tag", "past_paper")
+        .attach("file", Buffer.from(`%PDF-1.7 paper del ${i}`), `pd${i}.pdf`);
+      ids.push(paper.body.id);
+      await ctx.jobs.drain();
+    }
+    const weight = async () =>
+      (await request(ctx.app).get("/api/graph")).body.nodes.find(
+        (c: any) => c.id === "c_chain_rule",
+      ).examWeight;
+    expect(await weight()).toBe(2);
+    await request(ctx.app).delete(`/api/resources/${ids[0]}`);
+    await ctx.jobs.drain();
+    expect(await weight()).toBe(1);
+  });
+  it("cross-origin and public-demo deletes are refused", async () => {
+    const team = createApp(s, fake, {
+      teamMode: true,
+      teamOrigin: "https://studynova.ink",
+    } as any).app;
+    expect(
+      (
+        await request(team)
+          .delete("/api/resources/r_slides")
+          .set("origin", "https://evil.example")
+      ).status,
+    ).toBe(403);
+    expect(await s.get("resources", "r_slides")).not.toBeNull();
+    const demo = createApp(s, fake, { publicDemo: true }).app;
+    expect((await request(demo).delete("/api/resources/r_slides")).status).toBe(
+      404,
+    );
+    expect(await s.get("resources", "r_slides")).not.toBeNull();
+  });
+});

@@ -130,7 +130,7 @@ test("demo capture, caption correction, refusal and accessibility controls work"
   await page.getByRole("alert").getByText(/no selectable text/).waitFor();
   await upload.setInputFiles(fileURLToPath(new URL("../../fixtures/files/sample.pdf", import.meta.url)));
   await page.getByRole("dialog").getByRole("button", { name: "Add material" }).click();
-  await page.getByRole("button", { name: /sample\.pdf/ }).waitFor();
+  await page.getByRole("button", { name: /^sample\.pdf/ }).waitFor();
   await nav(page, "Lecture captions").click();
   const fix = page.getByRole("button", { name: "Fix back propagation" });
   await fix.focus();
@@ -193,6 +193,29 @@ test("workspace fits a small viewport", async t => {
   }
 });
 
+
+test("a material can be deleted after confirming", { skip: !!apiOrigin }, async t => {
+  const page = await open(t);
+  await page.getByRole("button", { name: "Add material", exact: true }).click();
+  await page.getByLabel("Choose PDF or PPTX").setInputFiles(fileURLToPath(new URL("../../fixtures/files/sample.pdf", import.meta.url)));
+  await page.getByRole("dialog").getByRole("button", { name: "Add material" }).click();
+  await page.getByRole("button", { name: /^sample\.pdf/ }).waitFor();
+  await page.getByRole("button", { name: "Delete sample.pdf" }).click();
+  const confirm = page.getByRole("group", { name: "Confirm deleting sample.pdf" });
+  await confirm.waitFor();
+  await confirm.getByRole("button", { name: "Cancel" }).click();
+  assert.equal(await confirm.count(), 0);
+  assert.equal(await page.getByRole("button", { name: /^sample\.pdf/ }).count(), 1);
+  await page.getByRole("button", { name: "Delete sample.pdf" }).click();
+  const audit = await new AxeBuilder({ page }).include(".materials-panel").analyze();
+  assert.deepEqual(audit.violations.filter(item => ["serious", "critical"].includes(item.impact)).map(item => item.id), []);
+  await confirm.getByRole("button", { name: "Delete material" }).click();
+  await page.getByText("Deleted sample.pdf.").waitFor();
+  assert.equal(await page.getByRole("button", { name: /^sample\.pdf/ }).count(), 0);
+  await page.reload();
+  await page.getByRole("heading", { name: "Backpropagation", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: /^sample\.pdf/ }).count(), 0);
+});
 
 test("key study screens have no serious accessibility violations", { skip: !!apiOrigin }, async t => {
   const page = await open(t);

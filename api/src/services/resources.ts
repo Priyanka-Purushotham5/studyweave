@@ -11,6 +11,7 @@ import { hash, type AiClient } from "../ai/aiClient.js";
 import { Jobs } from "./jobs.js";
 import { weights } from "./pipeline.js";
 import { ApiError, requireValue } from "./errors.js";
+import type { Concept } from "../contracts/types.js";
 export function splitPages(text: string) {
   text = sanitizeText(text, MAX_CAPTURE_CHARACTERS);
   const result = [];
@@ -209,6 +210,8 @@ export class Resources {
             : body.type === "youtube"
               ? await this.ai.call("/v1/video/text", { url: body.url })
               : { pages: splitPages(body.text ?? (await this.web(body.url))) };
+          // The student may have deleted this material while it was processing.
+          if (!(await this.s.get("resources", id))) return;
           if (
             !Array.isArray(result.pages) ||
             !result.pages.length ||
@@ -231,6 +234,7 @@ export class Resources {
               weights(this.s, this.ai, body.moduleId),
             );
         } catch (e) {
+          if (!(await this.s.get("resources", id))) return;
           await this.s.put("resources", {
             ...row,
             extractionStatus: "unsupported",
@@ -243,5 +247,43 @@ export class Resources {
       id,
     );
     return row;
+  }
+  /** Delete a material and everything that was learned only from it.
+   *  Concepts keep their evidence from other materials; a concept left with no
+   *  evidence is removed with its links, questions and attempts. */
+  async remove(id: string) {
+    const r = requireValue(
+      await this.s.get<any>("resources", id),
+      "Material not found",
+    );
+    await this.s.remove("resources", { id });
+    if (r.fileId) await this.s.deleteFile(r.fileId).catch(() => undefined);
+    await this.s.remove("questions", { "citations.resourceId": id });
+    await this.s.remove("edges", {
+      $or: [
+        { "evidence.from.resourceId": id },
+        { "evidence.to.resourceId": id },
+      ],
+    });
+    const gone: string[] = [];
+    for (const c of await this.s.all<Concept>("concepts", {
+      "evidence.resourceId": id,
+    })) {
+      const evidence = c.evidence.filter((e) => e.resourceId !== id);
+      if (evidence.length) await this.s.put("concepts", { ...c, evidence });
+      else gone.push(c.id);
+    }
+    if (gone.length) {
+      await this.s.remove("concepts", { id: { $in: gone } });
+      await this.s.remove("edges", {
+        $or: [{ from: { $in: gone } }, { to: { $in: gone } }],
+      });
+      await this.s.remove("questions", { conceptIds: { $in: gone } });
+      await this.s.remove("attempts", { conceptId: { $in: gone } });
+    }
+    if (["past_paper", "model_paper"].includes(r.tag))
+      await this.jobs.enqueue("paper-weights", () =>
+        weights(this.s, this.ai, r.moduleId),
+      );
   }
 }

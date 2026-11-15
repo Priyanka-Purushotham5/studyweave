@@ -1,7 +1,7 @@
 import { http, HttpResponse } from "msw";
 import { setupWorker } from "msw/browser";
 import { ApiError } from "../api/client";
-import { respond } from "./fixtures";
+import { removeResource, respond } from "./fixtures";
 
 const statuses: Record<string, number> = {
   bad_request: 400, not_found: 404, scanned_pdf: 422,
@@ -12,6 +12,10 @@ export const worker = setupWorker(http.all("*/api/*", async ({ request }) => {
   const url = new URL(request.url);
   const path = url.pathname.slice("/api".length) + url.search;
   try {
+    if (request.method === "DELETE") {
+      removeResource(decodeURIComponent(path.replace(/^\/resources\//, "")));
+      return new HttpResponse(null, { status: 204 });
+    }
     let payload: object | undefined;
     if (request.method !== "GET" && request.method !== "HEAD") {
       payload = request.headers.get("content-type")?.includes("multipart/form-data")
