@@ -236,6 +236,7 @@ export default function App() {
         <div className="breadcrumbs"><LayoutGrid size={17}/><span>Workspace</span>{subject && <><ChevronRight size={14}/><span>{subject.name}</span></>}{exam && <><ChevronRight size={14}/><strong>{exam.name}</strong></>}</div>
         <div className="actions">
           {demo && <span className="demo-badge"><span/> Demo</span>}
+          {import.meta.env.VITE_SESSION_AUTH === "1" && <form method="post" action="/auth/logout"><button className="button" type="submit">Sign out</button></form>}
           <button className="icon-button" aria-label="Refresh workspace" title="Refresh workspace" disabled={busy} onClick={() => void run(async () => { await refresh(); if (subject) await refreshGraph(subject.id); })}><RefreshCw size={17}/></button>
           {!publicDemo && <button className="button primary top-add" disabled={!mod || busy} onClick={() => setModal("capture")}><Plus size={17}/> Add material</button>}
         </div>

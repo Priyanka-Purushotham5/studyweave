@@ -1,0 +1,20 @@
+# Opt-in only; keep host Caddy Basic auth until this whole configuration is reviewed.
+services:
+  auth-service:
+    build:
+      context: ..
+      dockerfile: auth-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      AUTH_ORIGIN: https://studynova.ink
+      AUTH_CREDENTIAL_FILE: /run/secrets/team-auth
+    group_add:
+      - "${CADDY_AUTH_GID:?Set CADDY_AUTH_GID to the server's caddy group ID}"
+    ports:
+      - "127.0.0.1:3009:8002"
+    volumes:
+      - /etc/caddy/studynova-team-auth.caddy:/run/secrets/team-auth:ro
+  caddy-team:
+    build:
+      args:
+        VITE_SESSION_AUTH: "1"

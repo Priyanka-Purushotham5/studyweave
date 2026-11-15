@@ -35,11 +35,13 @@ async function load() {
   try {
     const { lastSelection } = await chrome.storage.local.get("lastSelection");
     tree = await worker("tree");
+    get("open-app").textContent = "Open StudyNova";
     suggested = tab && suggestModule(tree, tab);
     if (suggested) suggestion.textContent = `Use suggested module: ${suggested.module.name}`;
     render(lastSelection);
     message(!/^https?:\/\//i.test(tab?.url ?? "") ? "Open a web page to capture it." : module.value ? "" : "Create a module in StudyNova first.");
   } catch (error) {
+    get("open-app").textContent = "Open StudyNova / sign in";
     tree = { subjects: [] };
     suggested = undefined;
     render();
