@@ -4,7 +4,7 @@ import { MAX_UPLOAD_BYTES } from "../src/services/uploads.js";
 import { MAX_PAGE_CHARACTERS } from "../src/services/text.js";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { weights } from "../src/services/pipeline.js";
+import { typeEdgeBatch, weights } from "../src/services/pipeline.js";
 import {
   AtlasNeighborFinder,
   CosineNeighborFinder,
@@ -157,10 +157,29 @@ describe("Module B acceptance integration", () => {
       if (endpoint === "/v1/concepts/extract") sizes.push(body.pages.length);
       return original(endpoint, body);
     };
-    const response = await request(ctx.app).post("/api/modules/m_backprop/build");
+    const response = await request(ctx.app).post(
+      "/api/modules/m_backprop/build",
+    );
     await ctx.jobs.drain();
     expect((await s.get("jobs", response.body.jobId)).status).toBe("done");
     expect(sizes).toEqual([20, 20, 1]);
+  });
+  it("splits unavailable relationship batches while preserving pair order", async () => {
+    const pairs = Array.from({ length: 10 }, (_, i) => ({
+      a: { ...concepts[0], id: `a${i}` },
+      b: concepts[1],
+    }));
+    const sizes: number[] = [];
+    fake.call = async (_endpoint, body) => {
+      sizes.push(body.pairs.length);
+      if (body.pairs.length > 5)
+        throw new ApiError("ai_unavailable", "overloaded");
+      return { edges: body.pairs.map(({ a }: any) => a.id) };
+    };
+    expect(await typeEdgeBatch(fake, pairs, [])).toEqual(
+      pairs.map(({ a }) => a.id),
+    );
+    expect(sizes).toEqual([10, 5, 5]);
   });
   it("job fails with readable error", async () => {
     fake.call = async () => {

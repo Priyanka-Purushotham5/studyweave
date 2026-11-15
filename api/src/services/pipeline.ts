@@ -16,6 +16,44 @@ export async function modulePages(s: Store, id: string): Promise<Page[]> {
     await s.all("resources", { moduleId: id, extractionStatus: "done" })
   ).flatMap((r) => r.pages);
 }
+export async function typeEdgeBatch(
+  ai: AiClient,
+  batch: { a: Concept; b: Concept }[],
+  allPages: Page[],
+): Promise<any[]> {
+  const references = new Set(
+    batch.flatMap(({ a, b }) =>
+      [...a.evidence, ...b.evidence].map((e) => `${e.resourceId}:${e.page}`),
+    ),
+  );
+  try {
+    const response = await ai.call("/v1/edges/type", {
+      pairs: batch.map(({ a, b }) => ({
+        a: publicConcept(a),
+        b: publicConcept(b),
+      })),
+      pages: allPages.filter((p) => references.has(`${p.resourceId}:${p.n}`)),
+    });
+    if (
+      !Array.isArray(response.edges) ||
+      response.edges.length !== batch.length
+    )
+      throw new ApiError("ai_unavailable", "Invalid relationship response");
+    return response.edges;
+  } catch (error) {
+    if (
+      !(error instanceof ApiError) ||
+      error.code !== "ai_unavailable" ||
+      batch.length <= 5
+    )
+      throw error;
+    const middle = Math.ceil(batch.length / 2);
+    return [
+      ...(await typeEdgeBatch(ai, batch.slice(0, middle), allPages)),
+      ...(await typeEdgeBatch(ai, batch.slice(middle), allPages)),
+    ];
+  }
+}
 export async function build(
   s: Store,
   ai: AiClient,
@@ -105,20 +143,9 @@ export async function build(
   ).flatMap((r) => r.pages);
   for (let start = 0; start < pairs.length; start += 20) {
     const batch = pairs.slice(start, start + 20);
-    const references = new Set(
-      batch.flatMap(({ a, b }) =>
-        [...a.evidence, ...b.evidence].map((e) => `${e.resourceId}:${e.page}`),
-      ),
-    );
-    const response = await ai.call("/v1/edges/type", {
-      pairs: batch.map(({ a, b }) => ({
-        a: publicConcept(a),
-        b: publicConcept(b),
-      })),
-      pages: allPages.filter((p) => references.has(`${p.resourceId}:${p.n}`)),
-    });
-    for (let index = 0; index < (response.edges ?? []).length; index++) {
-      const e = response.edges[index],
+    const typedEdges = await typeEdgeBatch(ai, batch, allPages);
+    for (let index = 0; index < typedEdges.length; index++) {
+      const e = typedEdges[index],
         pair = batch[index];
       if (
         e &&
