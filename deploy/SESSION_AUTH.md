@@ -8,7 +8,7 @@ Successful logins receive an opaque, 256-bit random `__Host-studynova` cookie wi
 
 ## Local testing
 
-The unit suite runs with `python -m pip install -r auth-service/requirements.txt pytest httpx` followed by `pytest -q auth-service`. The local browser test used an isolated Caddy, MongoDB and fake AI stack. A localhost HTTP origin was used only for local browser testing; production cookies and site use HTTPS.
+The unit suite runs with `python -m pip install -r auth-service/requirements.txt pytest httpx` followed by `pytest -q auth-service`. `deploy/scripts/session-browser-check.mjs` tests a disposable local stack at `http://localhost:3043` with the local-only `local-demo` test account. The local test used isolated Caddy, MongoDB and fake AI: three browser sessions, refresh, cross-origin denial, logout and protected API denial passed. A real Chrome toolbar saved an MDN page and a YouTube video, and both were visible after refresh; after sign-out the popup requested sign-in. The video text was fake AI output. Localhost HTTP was used only for browser testing; a browser end-to-end run with real HTTPS and the production credential-file mount remains outstanding.
 
 ## Migration after explicit approval
 
