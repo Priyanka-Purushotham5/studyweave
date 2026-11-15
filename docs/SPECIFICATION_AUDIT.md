@@ -54,7 +54,7 @@ Compared against all 21 pages of the November 13, 2026 *StudyWeave 3.0: Module S
 | C3 | Implemented | Keyboard outline and browser navigation test. |
 | C4 | Implemented | States, icons, labels, edge details and citations; unit/browser tests. |
 | C5 | Implemented | Upload, URL capture and status UI; browser and backend tests. |
-| C6 | Implemented with caveat | Single-login browser extension and remembered selection; actual live toolbar save was verified previously; store publication and signed-out UI check remain outstanding. |
+| C6 | Implemented with caveat | Single-login extension and remembered selection; on this branch the user used the real Chrome toolbar to save an MDN page and a YouTube video to a disposable local module, and both reached `done`. The local stack was unauthenticated and used fake AI. Earlier PR #8 verified live shared-login capture; this branch's authenticated and signed-out UI flows and store publication remain unverified. |
 | C7 | Implemented | Quiz, answer feedback and citations; browser tests. |
 | C8 | Implemented | Adaptive battle engine and mock end-to-end battle tests. |
 | C9 | Implemented | Trace highlights and status copy; browser test. |
@@ -71,7 +71,7 @@ Compared against all 21 pages of the November 13, 2026 *StudyWeave 3.0: Module S
 | I1 | Implemented | Fixture/schema and quote validation in CI; module sample contracts also covered by tests. |
 | I2–I3 | Implemented locally | Fake-A HTTP integration tests for PDF build and lecture corrections. |
 | I4 | Implemented locally | Real-B seeded browser test covers tree, graph, wrong answer, Chain Rule trace and first revision-plan item in a disposable MongoDB stack with fake A. |
-| I5 | Partial | Prior real Chrome toolbar production capture succeeded with installed extension and isolated module; repeatable CI persistent-Chromium test is not yet present. |
+| I5 | Partial | This branch's actual Chrome toolbar saved a webpage and a YouTube video into the selected local module, confirmed in its tree with extraction status `done`; fake AI was used. Authenticated and signed-out toolbar behavior on this branch and repeatable CI toolbar testing remain unverified. Earlier live PR #8 used the shared login. |
 | I6 | Partial | Keyboard and serious/critical axe checks on five screens; manual NVDA/VoiceOver sign-off and full component-level jest-axe checks remain. |
 | I7 | Partial / external | Smoke script exists; current production authenticated HTTPS smoke is not run without user authorization/credentials. |
 | I8 | Blocked | Requires explicit approval of real Gemini key, model, quota and cost, plus real slides/audio and a live end-to-end test. |
@@ -87,7 +87,7 @@ Estimates assume an available test environment and do not include time waiting f
 | Item | Type and evidence | Approximate effort |
 | --- | --- | --- |
 | C13 QR multiplayer and cheat sheet | Missing implementation; blocked by owner's decision pending behavior and contract agreement. | Design 0.5–2 days; implementation unknown until agreed. |
-| I5 real extension toolbar on this branch, including signed-out UI | Testing gap; prior production capture passed on PR #8, but does not prove this revision. | 1–3 hours with working Chrome UI access. |
+| I5 authenticated and signed-out extension toolbar on this branch | Testing gap; real toolbar capture passed locally without authentication on this branch and previously on production for PR #8. | 1–3 hours with a suitable isolated authenticated environment and Chrome UI access. |
 | C11/I6 screen-reader review and remaining component-level accessibility checks | Testing gap; keyboard and selected axe tests pass locally. | 0.5–2 days, plus fixes if findings occur. |
 | A10–A12/A15, I8 live transcription and real-model workflow | Testing/evaluation blocked by explicit real-Gemini approval, quota controls and reference material; fake tests do not establish quality. | 1–3 days after approval and inputs; remediation unknown. |
 | A16 and pitch metrics | Evaluation gap: real generated items, human edge ratings, WER, live numerical agreement and Lighthouse evidence absent. | 1–3 days plus human rater availability; fixes unknown. |
