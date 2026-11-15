@@ -17,6 +17,7 @@ export function Practice({ moduleId, concepts, resources, mode, findConceptModul
   const [question, setQuestion] = useState<Question>();
   const [attack, setAttack] = useState<Attack>();
   const [answered, setAnswered] = useState<{ correct: boolean; result: AttemptResponse }>();
+  const [picked, setPicked] = useState<{ questionId: string; letter: string }>();
   const [seen, setSeen] = useState<string[]>([]);
   const [refused, setRefused] = useState(false);
   const [response, setResponse] = useState("");
@@ -91,7 +92,9 @@ export function Practice({ moduleId, concepts, resources, mode, findConceptModul
         {question.options.length ? <div className="options">
           {question.options.map((option, index) => {
             const letter = "ABCD"[index];
-            return <button className={answered && letter === question.answer ? "correct-option" : ""} key={letter} disabled={busy || !!answered} onClick={() => answer(letter === question.answer)}><span>{letter}</span>{option}</button>;
+            const mine = !!answered && picked?.questionId === question.id && picked.letter === letter;
+            return <button className={answered && letter === question.answer ? "correct-option" : mine ? "wrong-option" : ""} key={letter} disabled={busy || !!answered}
+              onClick={() => { setPicked({ questionId: question.id, letter }); answer(letter === question.answer); }}><span>{letter}</span>{option}</button>;
           })}
         </div> : <><label>Your answer<textarea value={response} disabled={reveal} onChange={event => setResponse(event.target.value)}/></label>
           {!reveal && <button className="button" disabled={!response.trim()} onClick={() => setReveal(true)}>Reveal answer</button>}

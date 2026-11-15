@@ -8,3 +8,4 @@ coverage/
 .env.*
 !.env.example
 .refact/
+eval_out/
