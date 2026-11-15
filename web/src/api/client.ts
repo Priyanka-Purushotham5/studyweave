@@ -74,7 +74,7 @@ export const api = {
 };
 
 export async function waitForJob(load: () => Promise<JobStatus>, onFailure?: () => void) {
-  for (let attempt = 0; attempt < 90; attempt += 1) {
+  for (let attempt = 0; attempt < 450; attempt += 1) {
     const job = await load();
     if (job.status === "done") return;
     if (job.status === "failed") {

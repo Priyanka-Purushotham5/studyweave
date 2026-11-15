@@ -142,6 +142,26 @@ describe("Module B acceptance integration", () => {
     expect(await s.all("concepts")).toHaveLength(n);
     expect(fake.calls).toBe(calls);
   });
+  it("splits long resources into bounded concept requests", async () => {
+    const resource = (await s.all("resources"))[0];
+    await s.put("resources", {
+      ...resource,
+      pages: Array.from({ length: 41 }, (_, i) => ({
+        ...resource.pages[i % resource.pages.length],
+        n: i + 1,
+      })),
+    });
+    const sizes: number[] = [];
+    const original = fake.call.bind(fake);
+    fake.call = async (endpoint, body) => {
+      if (endpoint === "/v1/concepts/extract") sizes.push(body.pages.length);
+      return original(endpoint, body);
+    };
+    const response = await request(ctx.app).post("/api/modules/m_backprop/build");
+    await ctx.jobs.drain();
+    expect((await s.get("jobs", response.body.jobId)).status).toBe("done");
+    expect(sizes).toEqual([20, 20, 1]);
+  });
   it("job fails with readable error", async () => {
     fake.call = async () => {
       throw new ApiError("ai_unavailable", "AI offline");
