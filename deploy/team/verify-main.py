@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 REQUIRED = {'auth-service', 'ai-service', 'api', 'contracts', 'web', 'deploy-policy'}
+GITHUB_ACTIONS_APP_ID = 15368
 
 def gh(*args):
     result = subprocess.run(['gh', *args], check=True, capture_output=True, text=True)
@@ -21,6 +22,9 @@ def verify(sha, branch, runs, checks, rollback=False):
     contexts = set(policy.get('contexts') or []) | {c['context'] for c in policy.get('checks') or []}
     if not REQUIRED.issubset(contexts):
         raise ValueError('Main must require all StudyNova CI checks')
+    bound = {c['context']: c.get('app_id') for c in policy.get('checks') or []}
+    if any(bound.get(name) != GITHUB_ACTIONS_APP_ID for name in REQUIRED):
+        raise ValueError('StudyNova checks must be bound to the GitHub Actions app')
     if rollback:
         return
     if not runs or runs[0].get('status') != 'completed' or runs[0].get('conclusion') != 'success':
@@ -34,6 +38,8 @@ def verify(sha, branch, runs, checks, rollback=False):
         result = latest.get(context)
         if not result or result.get('status') != 'completed' or result.get('conclusion') != 'success':
             raise ValueError(f'Required check is missing or failed: {context}')
+        if context in REQUIRED and (result.get('app') or {}).get('id') != GITHUB_ACTIONS_APP_ID:
+            raise ValueError(f'Unexpected check provider: {context}')
 
 if __name__ == '__main__':
     try:

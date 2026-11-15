@@ -32,5 +32,12 @@ class CaddyPolicyTests(unittest.TestCase):
         auth = site['handle'][0]['routes'][1]['handle'][0]['routes'][0]['handle'][0]
         auth['headers']['request']['set']['Origin'] = ['https://studynova.ink']
         with self.assertRaises(ValueError): policy.validate(self.config)
+    def test_http_listener_and_trusted_proxy_override_are_rejected(self):
+        server = self.config['apps']['http']['servers']['srv0']
+        server['listen'] = [':80']
+        with self.assertRaises(ValueError): policy.validate(self.config)
+        server['listen'] = [':443']
+        server['trusted_proxies'] = {'source': 'static', 'ranges': ['0.0.0.0/0']}
+        with self.assertRaises(ValueError): policy.validate(self.config)
 
 if __name__ == '__main__': unittest.main()

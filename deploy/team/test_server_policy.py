@@ -14,9 +14,9 @@ spec.loader.exec_module(policy)
 class ServerPolicyTests(unittest.TestCase):
     def test_server_independently_requires_protected_passing_main(self):
         sha = 'a' * 40
-        checks = [{'name': n, 'id': i, 'status': 'completed', 'conclusion': 'success'} for i, n in enumerate(sorted(policy.REQUIRED), 1)]
+        checks = [{'name': n, 'id': i, 'status': 'completed', 'conclusion': 'success', 'app': {'id': policy.GITHUB_ACTIONS_APP_ID}} for i, n in enumerate(sorted(policy.REQUIRED), 1)]
         def responses(path):
-            if path == '/branches/main': return {'protected': True, 'commit': {'sha': sha}, 'protection': {'required_status_checks': {'contexts': list(policy.REQUIRED)}}}
+            if path == '/branches/main': return {'protected': True, 'commit': {'sha': sha}, 'protection': {'required_status_checks': {'contexts': list(policy.REQUIRED), 'checks': [{'context': n, 'app_id': policy.GITHUB_ACTIONS_APP_ID} for n in policy.REQUIRED]}}}
             if '/actions/' in path: return {'workflow_runs': [{'status': 'completed', 'conclusion': 'success'}]}
             return {'total_count': len(checks), 'check_runs': checks}
         with patch.object(policy, 'get', side_effect=responses): policy.check(sha)

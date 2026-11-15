@@ -23,7 +23,9 @@ def handlers(route):
 def validate(config):
     servers = config['apps']['http']['servers']
     require(len(servers) == 1)
-    routes = next(iter(servers.values()))['routes']
+    server = next(iter(servers.values()))
+    require(set(server) == {'listen', 'routes'} and server['listen'] == [':443'])
+    routes = server['routes']
     require(len(routes) == 2)
     sites = {}
     for route in routes:

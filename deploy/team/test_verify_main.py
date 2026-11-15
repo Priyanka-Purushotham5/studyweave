@@ -9,9 +9,9 @@ spec.loader.exec_module(m)
 class VerifyMain(unittest.TestCase):
     def setUp(self):
         self.sha = 'a' * 40
-        self.branch = {'protected': True, 'commit': {'sha': self.sha}, 'protection': {'required_status_checks': {'contexts': sorted(m.REQUIRED)}}}
+        self.branch = {'protected': True, 'commit': {'sha': self.sha}, 'protection': {'required_status_checks': {'contexts': sorted(m.REQUIRED), 'checks': [{'context': n, 'app_id': m.GITHUB_ACTIONS_APP_ID} for n in sorted(m.REQUIRED)]}}}
         self.runs = [{'status': 'completed', 'conclusion': 'success'}]
-        self.checks = [{'name': n, 'id': i, 'status': 'completed', 'conclusion': 'success'} for i, n in enumerate(sorted(m.REQUIRED), 1)]
+        self.checks = [{'name': n, 'id': i, 'status': 'completed', 'conclusion': 'success', 'app': {'id': m.GITHUB_ACTIONS_APP_ID}} for i, n in enumerate(sorted(m.REQUIRED), 1)]
     def test_accepts_protected_passing_main(self):
         m.verify(self.sha, self.branch, self.runs, self.checks)
     def test_rejects_unprotected_stale_missing_and_failed(self):
@@ -21,6 +21,7 @@ class VerifyMain(unittest.TestCase):
             (self.sha, self.branch, [], self.checks),
             (self.sha, self.branch, self.runs, self.checks[:-1]),
             (self.sha, self.branch, self.runs, self.checks + [{'name': 'web', 'id': 99, 'status': 'completed', 'conclusion': 'failure'}]),
+            (self.sha, self.branch, self.runs, self.checks + [{'name': 'web', 'id': 99, 'status': 'completed', 'conclusion': 'success', 'app': {'id': 999}}]),
             (self.sha, {**self.branch, 'protection': {'required_status_checks': {'contexts': ['api']}}}, self.runs, self.checks),
         ]
         for args in bad:
