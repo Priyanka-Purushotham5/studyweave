@@ -1,6 +1,12 @@
 name: ci
 on: [push, pull_request]
 jobs:
+  deploy-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - run: python3 -m unittest discover -s deploy/team -p 'test_*.py'
+      - run: bash -n deploy/team/*.sh
   auth-service:
     runs-on: ubuntu-latest
     steps:

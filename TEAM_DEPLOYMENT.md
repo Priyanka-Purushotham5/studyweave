@@ -1,0 +1,49 @@
+# Team deployment to StudyNova
+
+This repository proposes one production environment: https://studynova.ink. Danush, Priyanka and Rohith have equal authority to start a deployment or rollback once they each have repository write access. Deployment is **manual only**: merging a PR does not deploy it. The workflow and server helper in this PR are not enabled until an administrator performs the bootstrap and GitHub configuration below. They have not been tested on the live server.
+
+## Deploy or roll back
+
+1. Open the repository's **Actions → Team production deployment → Run workflow**. Choose the `main` branch.
+2. For a deployment, select `deploy` and paste the **full 40-character SHA of the current main tip** into `target`. The workflow refuses older main commits, unprotected main, missing required checks, or a non-passing CI run. Waiting for the main-branch CI run after a merge is required.
+3. Open the run to follow its status. The log prints the timestamped rollback backup ID; keep that ID. GitHub Actions serializes deployment and rollback runs, and the server takes a separate non-blocking lock.
+4. To restore a prior snapshot, run the same workflow with `rollback` and the exact backup ID from a previous run, for example `20261115T040000Z-61a3207`. Rollback snapshots the current release first. It remains available when the newest main CI is failing, provided main's protection policy is still present.
+5. If the run reports rollback failure, stop and ask a server administrator to investigate. Do not delete volumes, reseed Atlas, remove authentication, or repeatedly retry an unknown failure.
+
+The root helper snapshots the current deployed-commit marker, the Caddyfile, full Compose directory and environment, image IDs, and container mount/volume mappings under `/root/studynova-team-backups/<backup-id>`. These backups contain sensitive configuration and are root-only; the run log exposes the ID, not their contents. It builds only the API, fake-AI service, session gateway, and team UI; it keeps Caddy on the host, checks Atlas readiness and container health, and runs a real authenticated HTTPS smoke test. If a switch or smoke check fails, it restores the recorded images, environment and validated Caddyfile and reruns health checks. Volume mappings are checked; no database seed, migration, reset, volume deletion, or `docker compose down -v` is run.
+
+A deployment refuses host security-policy changes, including changes to the Caddy session template, container port bindings, mounts, privileges, or user settings. Those changes require a separately reviewed administrative procedure. Because sessions are in memory, restarting the gateway signs everyone out. Fake Gemini is enforced, so AI output is fixture-based and not real-model verification.
+
+## Required GitHub settings (repository administrator)
+
+- Give each teammate write access, with no shared personal account. GitHub write access permits branch pushes, PRs and manual workflow dispatch; merging remains governed by branch rules and repository permissions.
+- Protect `main` with a classic branch protection rule that applies to everyone, including administrators. Require pull requests, prevent force pushes/deletion, prevent bypass, and require successful checks from the GitHub Actions app: `deploy-policy`, `auth-service`, `ai-service`, `api`, `contracts`, and `web`. The helper reads the required-check policy from GitHub's branch API; a ruleset-only configuration that does not populate that API fails closed. Set any review policy equally for the team. Do not grant untrusted contributors direct write access.
+- Create the GitHub Actions environment `production`; restrict deployment branches to **selected branch `main` only**. Do not configure a Danush-only required reviewer. If environment protection is unavailable on the repository's plan or visibility, **do not add the deployment key or enable the workflow**. Environment restrictions are an external security boundary; a workflow's own `if` statement cannot protect secrets from a malicious branch workflow.
+- Put only the dedicated forced-command key in the **production environment secret** `STUDYNOVA_DEPLOY_SSH_KEY`; never put it in repository-wide secrets. Set production environment variables `STUDYNOVA_DEPLOY_HOST` to the existing server address and `STUDYNOVA_SSH_KNOWN_HOSTS` to the verified SSH host-key line. Verify the host-key fingerprint out of band, not by blindly trusting `ssh-keyscan`.
+- Restrict who can edit branch rules, environment settings and Actions secrets to trusted repository administrators. Review `.github/workflows/**` and `deploy/team/**` changes carefully, preferably with code-owner review from any qualified teammate. Pin third-party Actions to full commit SHAs and keep `GITHUB_TOKEN` read-only.
+
+GitHub warns that repository writers can influence workflows and access repository secrets. An environment restricted to protected `main` helps keep untrusted PR branches from accessing its secret, but it does not protect against a malicious or compromised trusted writer whose code is merged, an administrator who changes the rules, or code that legitimately runs in production and can read application credentials. The team must trust everyone with merge/deploy authority; this system cannot provide security against those authorized to alter the protected deployment code. See [GitHub secure use](https://docs.github.com/en/actions/reference/security/secure-use) and [deployment environments](https://docs.github.com/en/actions/concepts/workflows-and-actions/deployment-environments).
+
+## One-time server bootstrap (administrator, after review)
+
+Do not run these steps as part of a PR or before the team approves enabling deployment. They configure the **existing** Vultr server; they do not create infrastructure. Ensure Ubuntu has `git`, `curl`, `python3`, `flock`, `sudo`, Docker Compose and Caddy. The public GitHub API must be reachable from the server; API errors or rate limiting block deployment.
+
+1. Generate a dedicated Ed25519 key pair for GitHub Actions. Store its private key only as the environment secret above. Add its public key for a new system account `studynova-deploy` whose home and `.ssh/authorized_keys` are owned by root and not writable by that account; disable password login and do not add it to the `docker` group. In `authorized_keys`, prefix the key with `restrict,command="/usr/local/libexec/studynova-authorized-command"`. Restrict the account to that key, and verify PTY, forwarding and interactive commands are unavailable. Configure access without loosening existing SSH restrictions.
+2. Install reviewed copies, owned by root and not writable by the deployment account:
+
+   ```sh
+   sudo install -D -o root -g root -m 0755 deploy/team/authorized-command.sh /usr/local/libexec/studynova-authorized-command
+   sudo install -D -o root -g root -m 0755 deploy/team/studynova-deploy.sh /usr/local/sbin/studynova-deploy
+   sudo install -D -o root -g root -m 0755 deploy/team/github-policy.py /usr/local/libexec/studynova-github-policy
+   sudo install -D -o root -g root -m 0755 deploy/team/caddy-policy.py /usr/local/libexec/studynova-caddy-policy
+   sudo install -D -o root -g root -m 0755 deploy/team/auth-smoke.py /usr/local/libexec/studynova-auth-smoke
+   ```
+
+   Configure a narrowly scoped sudoers entry allowing `studynova-deploy` to execute only `/usr/local/sbin/studynova-deploy` without a password, with normal environment reset and no `SETENV`. Use `visudo` and test both permitted and denied commands. The helper validates all arguments; the SSH key alone must not grant a shell or arbitrary sudo. Updates to these root-owned files are a separate administrative operation and are **not** installed automatically from a deployment commit.
+3. Provision a root-only `/etc/studynova/smoke-credentials.json` interactively using `sudo python3 deploy/team/setup-smoke-credentials.py`. The password is hidden and never sent to GitHub or printed. This stores a **second plaintext copy of the shared login on the server**, readable only by root, so that the server can verify a real authenticated session and logout after every deployment. Treat it as a high-value secret, rotate/remove it with the shared credentials, and do not enable automation if the team does not accept that tradeoff. A missing, unreadable, or incorrectly permissioned file blocks deployment. Backups of `.env` do not include this file.
+4. Independently verify the running release and commit, then create the root-owned, non-writable `/var/lib/studynova-deploy/current-commit` file containing exactly its full commit SHA. The helper checks that the running auth container's release path contains the matching SHA prefix. An absent or inconsistent marker fails closed; do not guess the baseline.
+5. Test the authorized-command restrictions, GitHub environment branch restriction, the server's GitHub policy check, authenticated smoke, lock contention and rollback in a disposable local environment first. Only then enable the production environment secret. Existing server backup `/root/studynova-rollbacks/pr11-20261115T034306Z` remains untouched.
+
+The dedicated account cannot directly use Docker or a shell, but the root-owned helper necessarily controls Docker and runs code from approved `main`; it is therefore a powerful deployment capability, not a sandbox against trusted maintainers. Do not install an unreviewed helper or let the account modify it.
+
+**SSH connectivity blocker:** the current server restricts SSH by source IP. GitHub-hosted runners do not have a fixed single source IP. Confirm a secure connectivity solution with the server administrator before enabling this workflow; do not widen the firewall or change SSH access without explicit approval. A self-hosted runner introduces its own code-execution and secret-isolation risks and requires a separate design review.
