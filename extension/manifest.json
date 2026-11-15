@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "StudyWeave Capture",
+  "name": "StudyNova Capture",
   "version": "3.0.0",
-  "description": "Save the current page to a StudyWeave module.",
+  "description": "Save the current page to a StudyNova module.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["https://studynova.ink/*", "http://127.0.0.1/*", "http://localhost/*"],
   "optional_host_permissions": ["https://*/*"],
-  "action": { "default_popup": "popup.html", "default_title": "Save to StudyWeave" },
+  "action": { "default_popup": "popup.html", "default_title": "Save to StudyNova" },
   "background": { "service_worker": "worker.js", "type": "module" }
 }

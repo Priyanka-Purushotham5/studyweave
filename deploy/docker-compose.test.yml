@@ -1,4 +1,4 @@
-# Key-free A+B integration stack. Module C is not implemented here.
+# Key-free A+B integration stack; add docker-compose.ui-test.yml for the built UI.
 services:
   mongo:
     image: mongo:7

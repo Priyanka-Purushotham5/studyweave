@@ -11,7 +11,7 @@ from .errors import ApiError
 from .endpoints import answer, concepts, edges, embed, glossary, papers, parse, questions, suggest, transcribe, video
 from .flagging import flag
 
-app = FastAPI(title="StudyWeave AI service")
+app = FastAPI(title="StudyNova AI service")
 for _module in (parse, video, glossary, transcribe, concepts, embed, edges, questions, papers, answer, suggest):
     app.include_router(_module.router)
 

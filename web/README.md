@@ -1,6 +1,6 @@
-# StudyWeave web workspace
+# StudyNova web workspace
 
-Run the workspace from the repository root with Node 20.19 or newer.
+Run the workspace from the repository root with Node 22.
 
 ```sh
 npm --prefix web ci

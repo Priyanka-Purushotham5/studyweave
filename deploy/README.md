@@ -20,7 +20,7 @@ node deploy/scripts/local-https-check.mjs
 DEMO_API_PORT=3002 docker compose -p studyweave-module-b-check -f deploy/docker-compose.test.yml down
 ```
 
-This builds the merged A source with FAKE_GEMINI=1, B with its HTTP adapter, and ephemeral MongoDB. No Gemini key is needed. Module C is not implemented here. `npm test` separately runs mongodb-memory-server and HTTP-adapter seam tests.
+This builds the merged A source with FAKE_GEMINI=1, B with its HTTP adapter, and ephemeral MongoDB. No Gemini key is needed. The separate web UI is available through the UI test overlay. `npm test` separately runs mongodb-memory-server and HTTP-adapter seam tests.
 
 ## Atlas and vectors
 

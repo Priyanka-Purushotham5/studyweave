@@ -2,7 +2,7 @@ export const defaultServer = "https://studynova.ink";
 
 export function serverAddress(value) {
   let url;
-  try { url = new URL(value.trim()); } catch { throw new Error("Enter a valid StudyWeave API URL."); }
+  try { url = new URL(value.trim()); } catch { throw new Error("Enter a valid StudyNova API URL."); }
   const local = ["127.0.0.1", "localhost"].includes(url.hostname);
   if (url.username || url.password || url.pathname !== "/" || url.search || url.hash ||
       (url.protocol !== "https:" && !(local && url.protocol === "http:"))) {

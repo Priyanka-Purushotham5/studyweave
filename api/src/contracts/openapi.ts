@@ -73,7 +73,7 @@ const file = {
 export const openapi = {
   openapi: "3.1.0",
   info: {
-    title: "StudyWeave Module B API",
+    title: "StudyNova Module B API",
     version: "3.0.0",
     description:
       "Shared definitions are bundled from contracts/schemas.json unchanged. B_* schemas document endpoint inputs not yet present in the shared package. Demo proxy uses HTTP Basic auth over TLS.",

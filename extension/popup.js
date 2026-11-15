@@ -38,7 +38,7 @@ async function load() {
     suggested = tab && suggestModule(tree, tab);
     if (suggested) suggestion.textContent = `Use suggested module: ${suggested.module.name}`;
     render(lastSelection);
-    message(!/^https?:\/\//i.test(tab?.url ?? "") ? "Open a web page to capture it." : module.value ? "" : "Create a module in StudyWeave first.");
+    message(!/^https?:\/\//i.test(tab?.url ?? "") ? "Open a web page to capture it." : module.value ? "" : "Create a module in StudyNova first.");
   } catch (error) {
     tree = { subjects: [] };
     suggested = undefined;
@@ -59,7 +59,7 @@ get("capture").addEventListener("submit", async event => {
   message("Saving…");
   try {
     await worker("save", { ...preferred, tabId: tab.id });
-    message("Saved. Refresh StudyWeave to see the page.");
+    message("Saved. Refresh StudyNova to see the page.");
     save.textContent = "Saved";
   } catch (error) {
     message(error.message, true);
