@@ -48,3 +48,14 @@ def test_wer_gate_runs_end_to_end_with_the_fake():
     out = run_gate(FakeGemini(), b"audio", "audio/mpeg", ref, [{"n": 1, "text": "slides"}])
     assert out["wer_without_hints"] == 0.0 and out["glossary_size"] == 4
     assert set(out) >= {"wer_with_hints", "hints_helped", "without_hints_text", "with_hints_text"}
+
+
+def test_live_report_runs_end_to_end_on_the_fake(tmp_path):
+    from eval.live_report import run_report
+    pages = json.loads((ROOT / "fixtures" / "pages.json").read_text())["pages"]
+    rep = run_report(FakeGemini(), pages, tmp_path, wait=0)
+    assert rep["errors"] == []
+    assert rep["concepts"]["kept"] == 4 and rep["concepts"]["dropped"] == 1
+    assert rep["embed"]["dimension"] == 768
+    assert rep["questions"]["mcq"]["served"] > 0 and rep["citation_rate"]["total"] > 0
+    assert (tmp_path / "live_report.json").exists() and (tmp_path / "graph.json").exists()

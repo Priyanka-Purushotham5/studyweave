@@ -61,6 +61,8 @@ test("study map opens both source citations and supports keyboard navigation in 
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Material map", exact: true }).click();
   await page.locator(".react-flow").waitFor();
+  // React Flow keeps nodes hidden until it has measured them; wait for the node before counting.
+  await page.getByRole("button", { name: "Lecture 7 - Backpropagation", exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: "Lecture 7 - Backpropagation", exact: true }).count(), 1);
   await page.getByRole("button", { name: "Collapse Backpropagation" }).click();
   assert.equal(await page.getByRole("button", { name: "Lecture 7 - Backpropagation", exact: true }).count(), 0);

@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowDownRight, ArrowUpRight, BookOpen, ChevronDown, ChevronRight, FileText, Folder, GraduationCap, ListTree, Maximize2, Minus, Network, Plus } from "lucide-react";
 import { MaterialFlow } from "./MaterialFlow";
@@ -143,14 +144,17 @@ export function StudyMap({ tree, graph, moduleId, trace, cleared, onModule, onRe
                   const y1 = from.y + (vertical ? (reverse ? 0 : 77) : 25), y2 = to.y + (vertical && reverse ? 77 : vertical ? 0 : 25);
                   const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
                   const path = vertical ? `M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}` : `M${x1},${y1} C${midX},${y1} ${midX},${y2} ${x2},${y2}`;
-                  return <path key={`${link.from}-${link.to}`} d={path} data-type={"type" in link ? link.type : undefined} className={highlighted ? "trace-edge" : ""} markerEnd="url(#link-arrow)"/>;
+                  const type = "type" in link ? link.type : undefined;
+                  const solid = type !== "extends" && type !== "contrasts";
+                  return <path key={`${link.from}-${link.to}`} d={path} data-type={type} pathLength={solid ? 1 : undefined}
+                    className={[solid ? "draw" : "fade", highlighted ? "trace-edge" : ""].join(" ").trim()} markerEnd="url(#link-arrow)"/>;
                 })}
               </svg>
-              {view === "concepts" ? nodes.map(node => {
+              {view === "concepts" ? nodes.map((node, index) => {
                 const position = positions.get(node.id)!;
                 const state = colorFor(node.readiness, cleared && node.moduleId === moduleId);
                 return <button key={node.id} className={`map-node concept-node ${state.key} ${traced(node.id) ? "trace-node" : ""}`}
-                  data-concept-id={node.id} onClick={() => onConcept(node)} style={{ left: position.x, top: position.y }}>
+                  data-concept-id={node.id} onClick={() => onConcept(node)} style={{ left: position.x, top: position.y, "--i": index } as React.CSSProperties}>
                   <span className="node-name">{node.name}<ArrowUpRight size={13}/></span>
                   <span className="node-caption"><Readiness value={node.readiness} cleared={cleared && node.moduleId === moduleId}/>{node.readiness == null ? "—" : `${node.readiness}%`}</span>
                 </button>;

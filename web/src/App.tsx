@@ -1,7 +1,8 @@
+import type React from "react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ArrowRight, ArrowUpRight, BookOpen, CalendarDays, Captions, ChevronRight, CircleHelp, FileStack, FolderOpen,
-  GraduationCap, LayoutGrid, Layers3, Network, Plus, RefreshCw, Settings2, Sparkles, Target, X, Zap,
+  GraduationCap, LayoutGrid, Network, Plus, RefreshCw, Settings2, Sparkles, Target, X, Zap,
 } from "lucide-react";
 import type { AnswerResponse, AttemptResponse, Concept, Edge, Evidence, Graph, Resource, RevisionPlan, Trace, Tree } from "../../contracts/types";
 import { api, apiUrl, waitForJob } from "./api/client";
@@ -214,13 +215,13 @@ export default function App() {
   return <div className="app-shell">
     <a className="skip-link" href="#main">Skip to content</a>
     <aside className="sidebar" aria-label="Study workspace">
-      <a className="brand" href="#" onClick={event => { event.preventDefault(); setScreen("map"); }}><span className="brand-icon"><Layers3 size={22}/></span><span>StudyNova</span></a>
+      <a className="brand" href="#" onClick={event => { event.preventDefault(); setScreen("map"); }}><span className="brand-icon"><Sparkles size={20}/></span><span>StudyNova</span></a>
       <div className="sidebar-body">
-        <div className="sidebar-label">WORKSPACE</div>
+        <div className="sidebar-label">Workspace</div>
         <nav aria-label="Workspace">
           {tabs.filter(({ id }) => !publicDemo || (id !== "captions" && id !== "plan")).map(({ id, name, Icon }) => <button key={id} type="button" aria-current={screen === id ? "page" : undefined} onClick={() => showScreen(id)}><Icon size={18}/><span>{name}</span>{screen === id && <span className="nav-indicator"/>}</button>)}
         </nav>
-        <div className="sidebar-label courses-label"><span>COURSES</span>{!publicDemo && <button className="icon-button" aria-label="Create course, exam, or module" title="Create course, exam, or module" onClick={() => { setCreateKind(subject ? "modules" : "subjects"); setModal("create"); }}><Plus size={17}/></button>}</div>
+        <div className="sidebar-label courses-label"><span>Courses</span>{!publicDemo && <button className="icon-button" aria-label="Create course, exam, or module" title="Create course, exam, or module" onClick={() => { setCreateKind(subject ? "modules" : "subjects"); setModal("create"); }}><Plus size={17}/></button>}</div>
         <nav className="course-nav" aria-label="Courses">{tree.subjects.map(course => <div key={course.id}>
           <button onClick={() => { setSubject(course.id); setExam(""); setModule(""); setTrace(null); setReview(undefined); setScreen("map"); }}><span className="course-icon"><GraduationCap size={15}/></span><span>{course.name}</span></button>
           {subject?.id === course.id && course.exams.map(test => <div className="course-exam" key={test.id}>
@@ -247,14 +248,18 @@ export default function App() {
         {mod ? <>
           <section className="hero" aria-labelledby="module-title">
             <div className="hero-pattern" aria-hidden="true"/>
-            <div className="hero-content"><div className="eyebrow"><FolderOpen size={15}/> STUDY MODULE {isCleared && <Readiness cleared/>}</div>
+            <div className="hero-content"><div className="eyebrow"><FolderOpen size={15}/> Study module {isCleared && <Readiness cleared/>}</div>
               <h1 id="module-title">{mod.name}</h1><p>{subject?.name} <span>·</span> {exam?.name}</p>
               <div className="hero-actions">
                 <button className="button hero-primary" disabled={busy} onClick={() => showScreen("quiz")}><Zap size={16}/> Start practice <ArrowRight size={16}/></button>
                 {!publicDemo && <button className="button hero-secondary" disabled={busy} onClick={() => { setAskValue(""); setAnswer(undefined); setModal("ask"); }}><Sparkles size={16}/> Ask materials</button>}
               </div>
             </div>
-            <div className="hero-emblem" aria-hidden="true"><div/><div/><div/><Network size={77} strokeWidth={1.15}/></div>
+            <svg className="hero-constellation" viewBox="0 0 220 150" aria-hidden="true">
+              <polyline points="18,112 64,76 108,94 150,40 200,58" />
+              <polyline points="108,94 132,132" />
+              {[[18,112],[64,76],[108,94],[150,40],[200,58],[132,132]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r={i === 3 ? 4.5 : 3} style={{ "--i": i } as React.CSSProperties}/>)}
+            </svg>
           </section>
           <div className="stats">
             <div className="stat"><span className="tile-icon"><Network size={19}/></span><div><span>Concepts</span><strong>{concepts.length}</strong></div></div>
@@ -277,10 +282,10 @@ export default function App() {
                 <div className="panel-head"><div className="panel-title"><span className="tile-icon"><CalendarDays size={18}/></span><div><h2 id="plan-title">Revision plan</h2><p>{exam?.name}{exam?.date ? ` · ${new Date(`${exam.date}T00:00:00`).toLocaleDateString(undefined, { dateStyle: "long" })}` : " · Exam date not set"}</p></div></div></div>
                 <div className="panel-body workspace-form"><label>Minutes per day<select value={minutes} onChange={event => setMinutes(Number(event.target.value))}>{[5, 15, 20, 30, 45, 60, 90, 120].map(value => <option key={value}>{value}</option>)}</select></label>
                   {!plan ? <p role="status">Loading revision plan…</p> : !plan.length || !examHasAttempts ? <p className="empty">No revision items yet. Build your concepts and complete a practice question.</p> :
-                    <ol className="plan-list">{plan.map(item => <li key={item.conceptId}><button onClick={() => {
+                    <ol className="plan-list">{plan.map((item, index) => <li key={item.conceptId} style={{ "--i": index, "--share": `${Math.round(item.minutes / Math.max(...plan.map(entry => entry.minutes)) * 100)}%` } as React.CSSProperties}><button onClick={() => {
                       const concept = currentGraph.nodes.find(node => node.id === item.conceptId);
                       if (concept) setDetail({ concept });
-                    }}><strong>{item.name}</strong><span>{item.minutes} min <ArrowUpRight size={14}/></span></button></li>)}</ol>}
+                    }}><strong>{item.name}</strong><span className="plan-bar" aria-hidden="true"/><span>{item.minutes} min <ArrowUpRight size={14}/></span></button></li>)}</ol>}
                 </div>
               </section>}
             </div>
