@@ -59,6 +59,15 @@ test("study map opens both source citations and supports keyboard navigation in 
   await page.getByRole("dialog", { name: "Concept connection" }).waitFor();
   assert.equal(await page.getByRole("dialog").getByRole("button", { name: /Page [13]/ }).count(), 2);
   await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Material map", exact: true }).click();
+  await page.locator(".react-flow").waitFor();
+  assert.equal(await page.getByRole("button", { name: "Lecture 7 - Backpropagation", exact: true }).count(), 1);
+  await page.getByRole("button", { name: "Collapse Backpropagation" }).click();
+  assert.equal(await page.getByRole("button", { name: "Lecture 7 - Backpropagation", exact: true }).count(), 0);
+  await page.getByRole("button", { name: "Expand Backpropagation" }).click();
+  await page.getByRole("button", { name: "Lecture 7 - Backpropagation", exact: true }).click();
+  await page.getByRole("dialog", { name: "Lecture 7 - Backpropagation" }).waitFor();
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Outline", exact: true }).click();
   const course = page.getByRole("treeitem", { name: "Neural Networks" });
   await course.focus();
@@ -170,6 +179,9 @@ test("workspace fits a small viewport", async t => {
     const box = await node.boundingBox();
     assert.ok(box.x >= canvas.x && box.x + box.width <= canvas.x + canvas.width + 1);
   }
+  await mobile.getByRole("button", { name: "Material map", exact: true }).click();
+  await mobile.locator(".react-flow").waitFor();
+  assert.equal(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
   const directory = process.env.STUDYWEAVE_SCREENSHOTS;
   if (directory) {
     await mkdir(directory, { recursive: true });
@@ -182,6 +194,9 @@ test("workspace fits a small viewport", async t => {
 
 test("key study screens have no serious accessibility violations", { skip: !!apiOrigin }, async t => {
   const page = await open(t);
+  await page.getByRole("button", { name: "Material map", exact: true }).click();
+  const mapAudit = await new AxeBuilder({ page }).analyze();
+  assert.deepEqual(mapAudit.violations.filter(item => ["serious", "critical"].includes(item.impact)).map(item => item.id), [], "Material map");
   for (const screen of ["Study map", "Practice quiz", "Boss battle", "Lecture captions", "Revision plan"]) {
     await nav(page, screen).click();
     const results = await new AxeBuilder({ page }).analyze();

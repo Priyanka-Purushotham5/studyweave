@@ -8,21 +8,29 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "test:browser": "node --test tests/browser.mjs"
+    "test:browser": "node --test tests/browser.mjs",
+    "test:components": "vitest run --environment jsdom tests/components.test.tsx"
   },
   "dependencies": {
+    "@xyflow/react": "^12.12.1",
     "lucide-react": "0.456.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
+    "@testing-library/react": "^16.3.3",
+    "@types/jest-axe": "^3.5.9",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "@vitest/browser-playwright": "^4.1.12",
+    "jest-axe": "^10.0.0",
+    "jsdom": "^26.1.0",
     "msw": "^2.15.0",
     "playwright": "1.64.1",
     "typescript": "5.9.3",
-    "vite": "7.3.7"
+    "vite": "7.3.7",
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "rollup": "4.65.0"

@@ -15,6 +15,7 @@ For real data, start the seeded API using [its setup instructions](../api/README
 
 ```sh
 npm --prefix web test
+npm --prefix web run test:components
 VITE_MOCK=1 npm --prefix web run build
 cd web
 npx playwright install chromium

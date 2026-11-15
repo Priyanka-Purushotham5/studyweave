@@ -62,11 +62,9 @@ export function createApp(
       if (req.method !== "POST" || !req.path.startsWith("/api/")) return next();
       const origin = req.get("origin");
       if (origin && origin !== options.teamOrigin)
-        return res
-          .status(403)
-          .json({
-            error: { code: "forbidden", message: "Origin not allowed" },
-          });
+        return res.status(403).json({
+          error: { code: "forbidden", message: "Origin not allowed" },
+        });
       if (Date.now() - windowStarted >= 60_000) {
         windowStarted = Date.now();
         interactions = 0;

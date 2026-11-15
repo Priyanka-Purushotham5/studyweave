@@ -275,3 +275,11 @@ html[data-motion="true"] *, html[data-motion="true"] *::before, html[data-motion
   .edge-button { font-size: 11px; }
   .map-frame, .map-scroll, .map-empty { min-height: 310px; }
 }
+
+.material-flow { width: 100%; height: 345px; }
+.material-flow-node.react-flow__node { width: 177px; padding: 0; background: #fff; border: 1px solid #dce4da; border-radius: 10px; box-shadow: 0 3px 9px #16332210; }
+.flow-branch { display: flex; align-items: center; width: 100%; min-height: 50px; color: var(--accent); }
+.flow-branch > button { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 48px; padding: 0 7px; border: 0; background: transparent; color: inherit; font-size: 11px; font-weight: 650; text-align: left; }
+.flow-branch > button:first-child { flex: 1; }
+.flow-branch > button:first-child span { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.flow-branch > .icon-button { width: 24px; min-width: 24px; }

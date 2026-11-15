@@ -26,6 +26,7 @@ npm --prefix api run build
 npm --prefix api test
 npm --prefix web ci
 npm --prefix web test
+npm --prefix web run test:components
 VITE_MOCK=1 npm --prefix web run build
 cd web && npx playwright install chromium && npm run test:browser
 ```

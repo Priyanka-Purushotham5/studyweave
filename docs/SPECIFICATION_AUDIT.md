@@ -50,7 +50,7 @@ Compared against all 21 pages of the November 13, 2026 *StudyWeave 3.0: Module S
 | Task | Status | Evidence / remaining work |
 | --- | --- | --- |
 | C1 | Implemented | Typed API client, fixture-backed MSW browser worker and error UI; mock-mode browser tests exercise the HTTP boundary. |
-| C2 | Partial | Interactive material map and collapse tests exist; implementation uses an SVG map rather than the specified React Flow library. |
+| C2 | Implemented | React Flow material map, expand/collapse and resource-opening browser tests. |
 | C3 | Implemented | Keyboard outline and browser navigation test. |
 | C4 | Implemented | States, icons, labels, edge details and citations; unit/browser tests. |
 | C5 | Implemented | Upload, URL capture and status UI; browser and backend tests. |
@@ -59,7 +59,7 @@ Compared against all 21 pages of the November 13, 2026 *StudyWeave 3.0: Module S
 | C8 | Implemented | Adaptive battle engine and mock end-to-end battle tests. |
 | C9 | Implemented | Trace highlights and status copy; browser test. |
 | C10 | Implemented | Captions and corrections with fixture tests; live speech unverified. |
-| C11 | Partial | Read-aloud, preferences and automated axe checks exist; PDF requests jest-axe component checks and a signed-off manual screen-reader audit, neither established here. |
+| C11 | Partial | Read-aloud, preferences, jest-axe checks on readiness/quiz/battle components and automated browser axe checks exist; remaining components need individual jest-axe checks and a human screen-reader audit is not signed off. |
 | C12 | Implemented | Revision plan and empty state; browser test. |
 | C13 | Missing / product decision | QR-based multi-user live battle and cheat sheet need a collaboration/session design and shared API contracts; user chose to keep this blocked pending team agreement. |
 | C14 | Partial | Local title-based suggestion and manual selection exist; no A-backed suggestion call. |
