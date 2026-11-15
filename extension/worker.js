@@ -2,17 +2,42 @@ import { capturePayload, defaultServer, retryNetwork, serverAddress } from "./ca
 
 async function call(path, body) {
   const { server = defaultServer } = await chrome.storage.local.get("server");
-  const url = new URL(path, serverAddress(server));
-  const response = await retryNetwork(() => fetch(url, {
-    ...(body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}),
-    credentials: "include",
-    signal: AbortSignal.timeout(9000),
-  }));
-  if (!response.ok) {
-    const data = await response.json().catch(() => null);
-    throw new Error(data?.error?.message ?? `StudyWeave returned HTTP ${response.status}.`);
+  const origin = serverAddress(server).origin;
+  if (!["/api/tree", "/api/resources"].includes(path)) throw new Error("Unsupported API request.");
+  const tabs = await chrome.tabs.query({ url: `${origin}/*` });
+  const appTab = tabs.find(tab => {
+    try { return tab.id && tab.status === "complete" && new URL(tab.url).origin === origin; }
+    catch { return false; }
+  });
+  if (!appTab) throw new Error("Open and sign in to StudyNova, then return to this page and try again.");
+  let execution;
+  try {
+    execution = await retryNetwork(() => chrome.scripting.executeScript({
+      target: { tabId: appTab.id },
+      world: "MAIN",
+      args: [origin, path, body ?? null],
+      func: async (expectedOrigin, apiPath, payload) => {
+        if (location.origin !== expectedOrigin || !["/api/tree", "/api/resources"].includes(apiPath))
+          return { status: 0, error: "StudyNova tab changed. Please try again." };
+        try {
+          const response = await fetch(apiPath, {
+            ...(payload ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) } : {}),
+            credentials: "same-origin",
+            signal: AbortSignal.timeout(9000),
+          });
+          return { status: response.status, data: await response.json().catch(() => null) };
+        } catch { return { status: 0, error: "Could not reach StudyNova. Check your connection and try again." }; }
+      },
+    }));
+  } catch {
+    throw new Error("Open and sign in to StudyNova, then return to this page and try again.");
   }
-  return response.json();
+  const result = execution?.[0]?.result;
+  if (!result || result.status === 401 || result.status === 403)
+    throw new Error("Open and sign in to StudyNova, then return to this page and try again.");
+  if (result.status < 200 || result.status >= 300)
+    throw new Error(result.error ?? result.data?.error?.message ?? `StudyNova returned HTTP ${result.status}.`);
+  return result.data;
 }
 
 async function handle(message) {

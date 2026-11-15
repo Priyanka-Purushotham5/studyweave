@@ -1,4 +1,4 @@
-export const defaultServer = "http://127.0.0.1:3000";
+export const defaultServer = "https://studynova.ink";
 
 export function serverAddress(value) {
   let url;

@@ -64,6 +64,10 @@ get("capture").addEventListener("submit", async event => {
     for (const control of controls) if (control !== save) control.disabled = false;
   }
 });
+get("open-app").addEventListener("click", async () => {
+  const { server: selected = defaultServer } = await chrome.storage.local.get("server");
+  await chrome.tabs.create({ url: serverAddress(selected).origin });
+});
 get("settings").addEventListener("submit", async event => {
   event.preventDefault();
   try {

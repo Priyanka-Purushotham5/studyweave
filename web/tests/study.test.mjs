@@ -76,30 +76,42 @@ test("extension retries a network failure once", async () => {
   assert.equal(attempts, 2);
 });
 
-test("extension worker loads settings on each message and persists successful captures", async t => {
+test("extension captures through a signed-in app tab and preserves its selection", async t => {
   let listener;
   let server = "https://first.example";
+  let available = true;
   const requests = [];
   const writes = [];
   t.mock.method(globalThis, "fetch", async (url, options) => {
-    requests.push({ url: String(url), body: options.body && JSON.parse(options.body) });
-    if (requests.length === 2) throw new TypeError("temporary network failure");
+    requests.push({ url: String(url), body: options.body && JSON.parse(options.body), credentials: options.credentials });
     return Response.json({ ok: true });
   });
   globalThis.chrome = {
     runtime: { id: "addon", onMessage: { addListener(callback) { listener = callback; } } },
     storage: { local: { get: async () => ({ server }), set: async value => writes.push(value) } },
-    tabs: { get: async () => ({ url: "https://example.com/notes", title: "Notes" }) },
-    scripting: { executeScript: async () => [{ result: { url: "https://example.com/notes", title: "Notes", text: "Backpropagation." } }] },
+    tabs: {
+      get: async () => ({ url: "https://example.com/notes", title: "Notes" }),
+      query: async () => available ? [{ id: 2, status: "complete", url: server + "/" }] : [],
+    },
+    scripting: { executeScript: async options => {
+      if (options.world === "MAIN") {
+        globalThis.location = { origin: server };
+        return [{ result: await options.func(...options.args) }];
+      }
+      return [{ result: { url: "https://example.com/notes", title: "Notes", text: "Backpropagation." } }];
+    } },
   };
-  t.after(() => { delete globalThis.chrome; });
+  t.after(() => { delete globalThis.chrome; delete globalThis.location; });
   await import("../../extension/worker.js");
   const call = message => new Promise(resolve => listener(message, { id: "addon" }, resolve));
   assert.deepEqual(await call({ action: "tree" }), { result: { ok: true } });
   server = "https://second.example";
   const lastSelection = { subjectId: "s_nn", examId: "e_midterm", moduleId: "m_backprop" };
   assert.deepEqual(await call({ action: "save", tabId: 1, ...lastSelection }), { result: { ok: true } });
-  assert.deepEqual(requests.map(request => request.url), ["https://first.example/api/tree", "https://second.example/api/resources", "https://second.example/api/resources"]);
-  assert.deepEqual(requests[2].body, { moduleId: "m_backprop", type: "web", url: "https://example.com/notes", title: "Notes", text: "Backpropagation." });
+  assert.deepEqual(requests.map(request => request.url), ["/api/tree", "/api/resources"]);
+  assert(requests.every(request => request.credentials === "same-origin"));
+  assert.deepEqual(requests[1].body, { moduleId: "m_backprop", type: "web", url: "https://example.com/notes", title: "Notes", text: "Backpropagation." });
   assert.deepEqual(writes, [{ lastSelection }]);
+  available = false;
+  assert.match((await call({ action: "tree" })).error, /sign in/i);
 });
