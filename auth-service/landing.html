@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0e1730">
+<meta name="description" content="StudyNova turns your own slides, PDFs and lectures into a cited concept map, quizzes you on it, and shows the prerequisite you are most likely missing.">
+<title>StudyNova · Study from your own material, with every source shown</title>
+<style>
+/* Same night-sky system as the app. No scripts, images or web fonts: the page CSP allows inline styles only. */
+:root{color-scheme:dark;--midnight:#0e1730;--deep:#0a1126;--dusk:#16213f;--dusk2:#1c2a4f;--line:#ffffff17;--ink:#ebe5d3;--bright:#fbf6e6;--muted:#aab3cc;--gold:#f3c969;--gold-ink:#1a1405;--aurora:#6fd3b8;--amber:#f0a35e;--rose:#f29a92;--sky:#8fb8f2;--violet:#c4a7f2}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--midnight)}
+body{margin:0;color:var(--ink);font:16px/1.65 "Atkinson Hyperlegible Next","Atkinson Hyperlegible",Verdana,system-ui,sans-serif;letter-spacing:.01em;
+ background:radial-gradient(1200px 700px at 85% -10%,#2a3c7a55,transparent 60%),radial-gradient(900px 600px at -10% 40%,#3b2a6a33,transparent 60%),linear-gradient(180deg,var(--deep),var(--midnight) 40%,#101a38)}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.8;background-size:640px 520px;animation:twinkle 7s ease-in-out infinite alternate;
+ background-image:radial-gradient(1px 1px at 7% 12%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 23% 64%,#e8e2ff 50%,transparent 51%),radial-gradient(1.4px 1.4px at 41% 28%,#fff7d6 50%,transparent 51%),radial-gradient(1px 1px at 58% 81%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 72% 17%,#dfe9ff 50%,transparent 51%),radial-gradient(1.6px 1.6px at 88% 46%,#fff3c4 50%,transparent 51%),radial-gradient(1px 1px at 95% 88%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 33% 92%,#e6ecff 50%,transparent 51%),radial-gradient(1px 1px at 14% 41%,#fff 50%,transparent 51%),radial-gradient(1.2px 1.2px at 66% 52%,#fff 50%,transparent 51%)}
+@keyframes twinkle{from{opacity:.45}to{opacity:.9}}
+a{color:var(--gold)}
+a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:6px}
+h1,h2,h3,p{margin:0}
+.skip{position:absolute;left:-999px}.skip:focus{left:12px;top:12px;z-index:50;background:var(--dusk);padding:8px 12px;border-radius:8px}
+.wrap{width:min(1180px,calc(100% - 40px));margin:0 auto}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:0;z-index:20;background:#0b1329cc;backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:20px;min-height:66px}
+.brand{display:flex;align-items:center;gap:10px;color:var(--bright);text-decoration:none;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand-mark{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;color:var(--gold);background:radial-gradient(circle,#f3c96930,#f3c96908 60%,transparent 70%);box-shadow:inset 0 0 0 1px #f3c96945;text-shadow:0 0 10px var(--gold)}
+.top nav{display:flex;gap:4px;margin-left:auto}
+.top nav a{color:var(--muted);text-decoration:none;font-size:15px;font-weight:700;padding:7px 10px;border-radius:8px}
+.top nav a:hover{color:var(--bright);background:#ffffff0d}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:9px 18px;border-radius:12px;font:inherit;font-weight:700;text-decoration:none;border:1px solid transparent;cursor:pointer;transition:background .2s,box-shadow .2s,transform .15s}
+.btn:active{transform:translateY(1px)}
+.btn.gold{background:var(--gold);color:var(--gold-ink)}
+.btn.gold:hover{background:#ffd885;box-shadow:0 0 0 1px #f3c96955,0 0 24px #f3c96955}
+.btn.ghost{color:var(--ink);background:#ffffff0d;border-color:#ffffff30}
+.btn.ghost:hover{background:#ffffff1a}
+.top .btn{min-height:40px;padding:7px 16px}
+
+/* ---------- hero ---------- */
+.hero{padding:76px 0 40px}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:44px;justify-items:center;text-align:center}
+.hero h1{font-size:clamp(38px,6.2vw,74px);line-height:1.04;letter-spacing:-.025em;color:var(--bright);max-width:16ch}
+.hero .lede{font-size:clamp(17px,2vw,20px);color:#cfd6ea;max-width:60ch;margin-top:18px}
+.hero .cta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:28px}
+.hero .note{margin-top:14px;font-size:14px;color:var(--muted)}
+
+/* ---------- animated demo window (12 s loop) ---------- */
+.demo{width:min(1060px,100%);border-radius:20px;border:1px solid #ffffff1f;background:#0b1329;box-shadow:0 40px 120px #000c,0 0 0 1px #f3c96914;overflow:hidden;text-align:left}
+.chrome{display:flex;align-items:center;gap:7px;padding:10px 14px;border-bottom:1px solid var(--line);background:#0e1730}
+.chrome i{width:10px;height:10px;border-radius:50%;background:#ffffff22}
+.chrome span{margin-left:12px;font-size:12px;color:var(--muted);background:#ffffff0a;padding:3px 12px;border-radius:999px}
+.screen{display:grid;grid-template-columns:150px minmax(0,1.6fr) minmax(220px,1fr);min-height:420px}
+.rail{border-right:1px solid var(--line);padding:14px 10px;display:grid;align-content:start;gap:4px;font-size:12px;color:var(--muted)}
+.rail b{color:var(--bright);font-size:14px;margin:0 0 12px 6px}
+.rail span{padding:6px 8px;border-radius:7px}
+.rail .on{color:var(--gold);background:#f3c96914;box-shadow:inset 2px 0 0 var(--gold)}
+.mapbox{position:relative;border-right:1px solid var(--line);background:radial-gradient(500px 260px at 50% 0%,#22346a66,transparent 70%)}
+.mapbox svg{display:block;width:100%;height:100%}
+.edge{fill:none;stroke:#8fa3d6;stroke-opacity:.7;stroke-width:2;stroke-dasharray:1;stroke-dashoffset:1;animation:edge 12s ease-out infinite}
+.edge.trace{stroke:var(--gold);stroke-opacity:1;stroke-width:3.2;filter:drop-shadow(0 0 4px #f3c969cc);stroke-dasharray:.07 .03;stroke-dashoffset:0;opacity:0;animation:trace 12s linear infinite}
+@keyframes edge{0%{stroke-dashoffset:1}12%,100%{stroke-dashoffset:0}}
+@keyframes trace{0%,49%{opacity:0;stroke-dashoffset:0}50%{opacity:1}92%{opacity:1;stroke-dashoffset:-.8}100%{opacity:0;stroke-dashoffset:-.9}}
+.node rect{fill:#1a2650;stroke:#ffffff26;stroke-width:1}
+.node text{fill:#fbf6e6;font:700 13px "Atkinson Hyperlegible Next",Verdana,sans-serif}
+.node .cap{fill:#aab3cc;font-weight:700;font-size:11px}
+.star{animation:pulse 3s ease-in-out infinite alternate}
+@keyframes pulse{from{opacity:.7}to{opacity:1}}
+.node.gap rect{animation:gaprect 12s ease-in-out infinite}
+@keyframes gaprect{0%,49%{stroke:#ffffff26;stroke-width:1}52%,92%{stroke:#f3c969;stroke-width:2.5}100%{stroke:#ffffff26;stroke-width:1}}
+.halo{fill:none;stroke:#f3c969;stroke-width:2;opacity:0;transform-box:fill-box;transform-origin:center;animation:halo 12s ease-out infinite}
+@keyframes halo{0%,50%{opacity:0;transform:scale(1)}56%{opacity:.8}70%{opacity:0;transform:scale(1.25)}71%{opacity:0;transform:scale(1)}76%{opacity:.8}90%,100%{opacity:0;transform:scale(1.25)}}
+.side{display:grid;align-content:start;gap:10px;padding:14px}
+.card{border:1px solid var(--line);border-radius:12px;background:#16213f;padding:11px 12px;font-size:12.5px}
+.card h4{margin:0 0 7px;font-size:13px;color:var(--bright)}
+.q .opt{display:flex;gap:8px;align-items:center;border:1px solid #ffffff18;border-radius:8px;padding:5px 8px;margin-top:5px;background:#1a2650}
+.q .opt b{display:grid;place-items:center;width:20px;height:20px;border-radius:5px;background:#0b1329;color:var(--gold);font-size:11px}
+.q .pick{animation:pick 12s ease-in-out infinite}
+@keyframes pick{0%,30%{border-color:#ffffff18;background:#1a2650}33%,92%{border-color:var(--rose);background:#f29a921f}100%{border-color:#ffffff18;background:#1a2650}}
+.q .right{animation:right 12s ease-in-out infinite}
+@keyframes right{0%,35%{border-color:#ffffff18;background:#1a2650}38%,92%{border-color:var(--aurora);background:#6fd3b81f}100%{border-color:#ffffff18;background:#1a2650}}
+.gapcard{border-color:#f3c96966;box-shadow:0 0 24px #f3c96922;transform-origin:top;animation:gapcard 12s ease-out infinite}
+@keyframes gapcard{0%,46%{transform:scaleY(0);opacity:0}52%,92%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+.gapcard q{display:block;border-left:3px solid var(--gold);padding-left:8px;color:#f1ecdc;quotes:"\201C" "\201D"}
+.plan .row{display:grid;grid-template-columns:1fr 70px;gap:8px;align-items:center;margin-top:6px}
+.plan .bar{height:6px;border-radius:9px;background:#ffffff12;overflow:hidden}
+.plan .bar i{display:block;height:100%;width:var(--w);border-radius:inherit;background:linear-gradient(90deg,var(--sky),var(--gold));transform-origin:left;animation:bar 12s ease-out infinite}
+@keyframes bar{0%,62%{transform:scaleX(0)}75%,100%{transform:scaleX(1)}}
+.plan .row:nth-child(3) i{animation-delay:.25s}.plan .row:nth-child(4) i{animation-delay:.5s}
+.caption{margin-top:12px;text-align:center;color:var(--muted);font-size:14px}
+
+/* ---------- sections ---------- */
+section{padding:80px 0;scroll-margin-top:70px}
+#top{scroll-margin-top:70px}
+.head{max-width:62ch;margin-bottom:34px}
+.head h2{font-size:clamp(28px,3.6vw,42px);line-height:1.12;letter-spacing:-.02em;color:var(--bright)}
+.head p{margin-top:12px;color:#c7cfe6;font-size:18px}
+
+/* how it works: a real sequence, joined by a constellation line */
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;position:relative;counter-reset:step}
+.steps::before{content:"";position:absolute;left:28px;right:28px;top:27px;height:2px;background:linear-gradient(90deg,var(--gold),#8fa3d666);transform-origin:left;animation:grow 1.6s ease-out .2s both}
+@keyframes grow{from{transform:scaleX(0)}to{transform:none}}
+.steps li{position:relative;counter-increment:step}
+.steps li::before{content:counter(step);display:grid;place-items:center;width:56px;height:56px;border-radius:50%;margin-bottom:16px;position:relative;
+ font-weight:700;font-size:20px;color:var(--gold-ink);background:radial-gradient(circle at 40% 35%,#fff4cf,var(--gold));box-shadow:0 0 0 6px var(--midnight),0 0 26px #f3c96988}
+.steps h3{font-size:19px;color:var(--bright)}
+.steps p{margin-top:6px;color:#c7cfe6}
+
+/* features */
+.features{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
+.feat{grid-column:span 2;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:18px;padding:22px;background:linear-gradient(160deg,#1b2851,#141e3d);transition:transform .25s,border-color .25s,box-shadow .25s}
+.feat:hover{transform:translateY(-4px);border-color:#f3c96966;box-shadow:0 18px 40px #03081899,0 0 0 1px #f3c96922}
+.feat.wide{grid-column:span 3}
+.feat svg{width:46px;height:46px;margin-bottom:14px;overflow:visible}
+.feat h3{font-size:19px;color:var(--bright)}
+.feat p{margin-top:8px;color:#c7cfe6}
+.feat .k{margin-top:12px;font-size:14px;color:var(--gold);font-weight:700}
+.ico{fill:none;stroke:var(--gold);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ico .s{fill:#fff6d8;stroke:none;filter:drop-shadow(0 0 3px #f3c969)}
+.ico .dash{stroke-dasharray:4 4;animation:dash 2.5s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-16}}
+.ico .spin{transform-box:fill-box;transform-origin:center;animation:spin 9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* accessibility band */
+.a11y{border:1px solid #6fd3b833;border-radius:22px;padding:34px;background:radial-gradient(600px 300px at 0% 0%,#6fd3b818,transparent 70%),#121c3a}
+.a11y ul{list-style:none;padding:0;margin:20px 0 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.a11y li{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:#16213f}
+.a11y li strong{display:block;color:var(--bright)}
+.a11y li span{color:#c7cfe6;font-size:15px}
+.states{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.chip{display:inline-flex;gap:5px;align-items:center;font-size:14px;font-weight:700;border-radius:999px;padding:4px 11px}
+.chip.u{color:#c7cfe6;background:#ffffff12}.chip.w{color:#ffb8b1;background:#f29a9224}.chip.d{color:#ffc28c;background:#f0a35e24}.chip.s{color:#94ead3;background:#6fd3b824}.chip.c{color:#ffd98a;background:#f3c96928}
+
+/* guide */
+.guide{display:grid;gap:12px}
+.guide details{border:1px solid var(--line);border-radius:16px;background:#16213f;transition:border-color .2s}
+.guide details[open]{border-color:#f3c96966;box-shadow:0 0 0 1px #f3c96922}
+.guide summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:14px;padding:16px 18px;font-weight:700;font-size:18px;color:var(--bright)}
+.guide summary::-webkit-details-marker{display:none}
+.guide summary::after{content:"";margin-left:auto;width:10px;height:10px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);transition:transform .25s}
+.guide details[open] summary::after{transform:rotate(225deg)}
+.guide .num{display:grid;place-items:center;flex-shrink:0;width:32px;height:32px;border-radius:50%;font-size:15px;color:var(--gold);box-shadow:inset 0 0 0 1px #f3c96966}
+.guide .body{padding:0 18px 18px 64px;color:#d7dcec;animation:open .35s ease-out}
+@keyframes open{from{transform:translateY(-6px)}to{transform:none}}
+.guide ol,.guide ul{margin:6px 0 0;padding-left:20px}
+.guide li{margin:4px 0}
+.guide kbd{font:inherit;font-size:14px;border:1px solid #ffffff30;border-bottom-width:2px;border-radius:6px;padding:0 6px;background:#0b1329}
+
+/* sign-in panel: opens at #signin with CSS :target (no scripts) */
+.signin{position:fixed;inset:0;z-index:40;display:none;place-items:center;padding:20px;background:#050a18c4;backdrop-filter:blur(4px)}
+.signin:target,.signin.open{display:grid}
+.signin .panel{position:relative;width:min(400px,100%);border:1px solid #ffffff1f;border-radius:20px;padding:30px;background:#141e3d;box-shadow:0 30px 90px #000a,0 0 0 1px #f3c9691a;animation:pop .3s cubic-bezier(.2,.8,.3,1.2)}
+@keyframes pop{from{transform:translateY(12px) scale(.96)}to{transform:none}}
+.signin h2{font-size:26px;color:var(--bright);display:flex;gap:10px;align-items:center}
+.signin h2::before{content:"\2726";color:var(--gold);text-shadow:0 0 12px var(--gold)}
+.signin p{color:var(--muted);margin-top:4px}
+.signin label{display:block;margin-top:16px;font-weight:700}
+.signin input{display:block;width:100%;margin-top:6px;padding:11px 12px;border-radius:10px;border:1px solid #3a4b7c;background:#0b1329;color:var(--ink);font:inherit}
+.signin input:focus{border-color:var(--gold)}
+.signin .btn{width:100%;justify-content:center;margin-top:22px}
+.signin .close{position:absolute;top:12px;right:14px;color:var(--muted);text-decoration:none;font-size:22px;line-height:1;padding:6px 9px;border-radius:8px}
+.signin .close:hover{color:var(--bright);background:#ffffff12}
+.alert{margin-top:14px;color:#ffc4be;background:#f29a921f;border:1px solid #f29a9255;border-radius:10px;padding:8px 11px}
+.signin small{display:block;margin-top:14px;color:var(--muted);font-size:14px}
+
+/* footer */
+footer{border-top:1px solid var(--line);padding:46px 0 34px;background:#0a1126aa}
+.foot{display:grid;grid-template-columns:1.2fr 2fr;gap:30px}
+.foot h3{color:var(--bright);font-size:18px}
+.foot p{color:var(--muted);margin-top:8px}
+.team{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.team li{border:1px solid var(--line);border-radius:14px;padding:14px;background:#16213f}
+.team strong{display:block;color:var(--bright)}
+.team span{display:block;color:var(--muted);font-size:14px}
+.team a{font-size:14px;overflow-wrap:anywhere}
+.legal{margin-top:30px;color:var(--muted);font-size:14px;display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
+
+/* section reveal while scrolling, where the browser supports it (no opacity, so text keeps full contrast) */
+@supports (animation-timeline: view()){
+ .reveal{animation:rise linear both;animation-timeline:view();animation-range:entry 0% entry 40%}
+ @keyframes rise{from{transform:translateY(40px)}to{transform:none}}
+}
+
+/* responsive */
+@media (max-width:980px){
+ .screen{grid-template-columns:minmax(0,1fr)}.rail{display:none}.mapbox{border-right:0;border-bottom:1px solid var(--line);min-height:300px}
+ .side{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .steps{grid-template-columns:repeat(2,minmax(0,1fr))}.steps::before{display:none}
+ .feat,.feat.wide{grid-column:span 3}
+ .a11y ul{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .foot{grid-template-columns:1fr}
+}
+@media (max-width:680px){
+ .top nav{display:none}.top .btn{margin-left:auto}
+ .side{grid-template-columns:1fr}
+ .steps{grid-template-columns:1fr}
+ .feat,.feat.wide{grid-column:span 6}
+ .a11y ul,.team{grid-template-columns:1fr}
+ .guide .body{padding-left:18px}
+ section{padding:56px 0}
+}
+@media (prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+ .edge{stroke-dashoffset:0}.edge.trace{opacity:1;stroke-dasharray:none}.gapcard{transform:none;opacity:1}.plan .bar i{transform:none}
+ .node.gap rect{stroke:#f3c969;stroke-width:2.5}.q .pick{border-color:var(--rose);background:#f29a921f}.q .right{border-color:var(--aurora);background:#6fd3b81f}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+ <div class="wrap">
+  <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">&#10022;</span>StudyNova</a>
+  <nav aria-label="Page sections">
+   <a href="#how">How it works</a><a href="#features">Features</a><a href="#guide">Guide</a><a href="#team">Team</a>
+  </nav>
+  <a class="btn gold" href="#signin">Sign in</a>
+ </div>
+</header>
+
+<main id="main">
+<div id="top" class="hero">
+ <div class="wrap hero-grid">
+  <div>
+   <h1>Your course, mapped like a night sky</h1>
+   <p class="lede">StudyNova turns your own slides, PDFs, web pages and lectures into a map of concepts. It quizzes you from that material, shows the source for every claim, and when you get something wrong, points to the earlier idea you are most likely missing.</p>
+   <div class="cta"><a class="btn gold" href="#signin">Sign in to your workspace</a><a class="btn ghost" href="{{DEMO_URL}}">Watch the 2-minute demo</a></div>
+   <p class="note">Built at HackUMass XIV for students who want answers they can check.</p>
+  </div>
+
+  <figure class="demo" aria-labelledby="demo-caption" style="margin:0">
+   <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span>studynova.ink</span></div>
+   <div class="screen" role="img" aria-label="Animated preview: a concept map draws its links, a quiz answer is marked wrong, the path back to Chain rule lights up gold as the likely gap, and a revision plan fills in.">
+    <div class="rail" aria-hidden="true"><b>&#10022; StudyNova</b><span class="on">Study map</span><span>Practice quiz</span><span>Boss battle</span><span>Lecture captions</span><span>Revision plan</span></div>
+    <div class="mapbox" aria-hidden="true">
+     <svg viewBox="0 0 560 400" preserveAspectRatio="xMidYMid meet">
+      <path class="edge" pathLength="1" d="M110,118 C110,210 280,210 280,292"/>
+      <path class="edge" pathLength="1" d="M450,118 C450,210 280,210 280,292"/>
+      <path class="edge" pathLength="1" d="M280,118 C280,170 110,160 110,118" style="opacity:.35"/>
+      <path class="edge trace" pathLength="1" d="M280,292 C280,210 450,210 450,118"/>
+      <g class="node"><rect x="30" y="62" width="160" height="56" rx="12"/><circle class="star" cx="48" cy="80" r="5" fill="#6fd3b8" style="filter:drop-shadow(0 0 5px #6fd3b8)"/><text x="60" y="84">Gradient descent</text><text class="cap" x="48" y="106">&#10003; Strong · 82%</text></g>
+      <g class="node"><rect x="200" y="62" width="160" height="56" rx="12"/><circle class="star" cx="218" cy="80" r="5" fill="#aab3cc"/><text x="230" y="84">Activation fns</text><text class="cap" x="218" y="106">&#9675; Untested</text></g>
+      <g class="node gap"><rect x="370" y="62" width="160" height="56" rx="12"/><circle class="star" cx="388" cy="80" r="5" fill="#f29a92" style="filter:drop-shadow(0 0 5px #f29a92)"/><text x="400" y="84">Chain rule</text><text class="cap" x="388" y="106">! Weak · 35%</text><rect class="halo" x="370" y="62" width="160" height="56" rx="12"/></g>
+      <g class="node"><rect x="200" y="292" width="160" height="56" rx="12"/><circle class="star" cx="218" cy="310" r="5" fill="#f0a35e" style="filter:drop-shadow(0 0 5px #f0a35e)"/><text x="230" y="314">Backpropagation</text><text class="cap" x="218" y="336">&#9680; Developing · 52%</text></g>
+     </svg>
+    </div>
+    <div class="side" aria-hidden="true">
+     <div class="card q"><h4>Which rule does backpropagation apply layer by layer?</h4>
+      <div class="opt pick"><b>A</b>Product rule</div><div class="opt right"><b>B</b>Chain rule</div><div class="opt"><b>C</b>Power rule</div></div>
+     <div class="card gapcard"><h4>Likely gap: Chain rule</h4><q>compute the derivative of a composite function by multiplying the derivatives of its parts</q><div style="margin-top:6px;color:#ffd98a">Lecture 7 · Page 2</div></div>
+     <div class="card plan"><h4>Revision plan · 30 min a day</h4>
+      <div class="row"><span>Chain rule</span><span class="bar"><i style="--w:100%"></i></span></div>
+      <div class="row"><span>Backpropagation</span><span class="bar"><i style="--w:100%"></i></span></div>
+      <div class="row"><span>Activation fns</span><span class="bar"><i style="--w:50%"></i></span></div></div>
+    </div>
+   </div>
+   <figcaption id="demo-caption" class="caption">Miss a question, and StudyNova traces it back to the concept underneath, with the quote from your own notes.</figcaption>
+  </figure>
+ </div>
+</div>
+
+<section id="how" aria-labelledby="how-title">
+ <div class="wrap">
+  <div class="head reveal"><h2 id="how-title">From scattered notes to a plan in four steps</h2><p>Everything StudyNova shows you comes from the material you give it.</p></div>
+  <ol class="steps">
+   <li class="reveal"><h3>Collect</h3><p>Upload PDFs and slides, paste a link, add a YouTube lecture, or save any page with the Chrome extension. Each source lands in your course, exam and module.</p></li>
+   <li class="reveal"><h3>Map</h3><p>Build the concept web. StudyNova finds the key ideas and how they depend on each other, and quotes the page that supports every link.</p></li>
+   <li class="reveal"><h3>Practise</h3><p>Take a quiz or a boss battle written from your own pages. Every question cites where its answer comes from.</p></li>
+   <li class="reveal"><h3>Fix the gap</h3><p>Get a question wrong and StudyNova walks back to the weakest earlier concept, then builds a revision plan around it.</p></li>
+  </ol>
+ </div>
+</section>
+
+<section id="features" aria-labelledby="features-title">
+ <div class="wrap">
+  <div class="head reveal"><h2 id="features-title">What you can do</h2><p>Built so you can trust what it tells you, and see where every answer came from.</p></div>
+  <div class="features">
+   <article class="feat wide reveal">
+    <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><path class="dash" d="M8 12 L24 36 L40 10"/><circle class="s" cx="8" cy="12" r="3.2"/><circle class="s" cx="24" cy="36" r="3.6"/><circle class="s" cx="40" cy="10" r="3.2"/></svg>
+    <h3>A concept map with sources</h3><p>See every idea in your module as a star, coloured by how ready you are. Click any link to read the two quotes, one from each concept's page, that justify it.</p><p class="k">Concept web, material map and keyboard outline</p>
+   </article>
+   <article class="feat wide reveal">
+    <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="17"/><circle cx="24" cy="24" r="9"/><circle class="s" cx="24" cy="24" r="3.5"/><path class="spin" d="M24 4 v6 M24 38 v6 M4 24 h6 M38 24 h6"/></svg>
+    <h3>Find the likely gap</h3><p>When you miss a question, StudyNova follows the prerequisite links back to the weakest concept and lights up the path. It says "likely gap", never "the cause", because it is an educated guess you can check.</p><p class="k">Shown with the evidence page</p>
+   </article>
+   <article class="feat reveal">
+    <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="9" width="32" height="30" rx="6"/><path d="M15 20 h18 M15 28 h11"/><circle class="s" cx="36" cy="36" r="4"/></svg>
+    <h3>Quizzes from your pages</h3><p>Multiple choice, short answer and past-paper style questions at three difficulty levels. A quote that is not really on the cited page is dropped, never shown.</p>
+   </article>
+   <article class="feat reveal">
+    <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 40 C10 30 8 22 12 16 C16 10 22 12 24 17 C26 12 32 10 36 16 C40 22 38 30 24 40 Z"/><circle class="s" cx="34" cy="10" r="3"/></svg>
+    <h3>Boss battle</h3><p>Three hearts, XP, and a boss whose health is the module's concept count. Missed concepts come back as the boss's next attack until you clear the module gold.</p>
+   </article>
+   <article class="feat reveal">
+    <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M10 38 V12 M10 38 H40"/><path class="dash" d="M14 32 L22 24 L28 28 L38 14"/><circle class="s" cx="38" cy="14" r="3.2"/></svg>
+    <h3>Revision plan</h3><p>Tell it how many minutes you have a day. It orders concepts by exam weight and how weak you are, so the most useful work comes first.</p>
+   </article>
+   <article class="feat reveal">
+    <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="12" width="34" height="24" rx="5"/><path d="M13 22 h8 M25 22 h10 M13 29 h14"/><circle class="s" cx="34" cy="29" r="3"/></svg>
+    <h3>Lecture captions you can fix</h3><p>Lecture audio is transcribed using your slides' own vocabulary. Words that were probably misheard are highlighted, and one tap fixes them. Fix a word twice and it is fixed automatically next time.</p>
+   </article>
+   <article class="feat reveal">
+    <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><path d="M10 12 h28 a4 4 0 0 1 4 4 v14 a4 4 0 0 1 -4 4 H22 l-8 7 v-7 h-4 a4 4 0 0 1 -4 -4 V16 a4 4 0 0 1 4 -4 Z"/><circle class="s" cx="24" cy="23" r="3"/></svg>
+    <h3>Ask your materials</h3><p>Ask a question in plain words and get an answer with citations. If your material does not cover it, StudyNova says "not in your materials" instead of guessing.</p>
+   </article>
+   <article class="feat reveal">
+    <svg class="ico" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="16"/><circle cx="24" cy="24" r="6"/><path d="M24 8 L24 18 M10 31 L19 27 M38 31 L29 27"/><circle class="s" cx="24" cy="24" r="2.5"/></svg>
+    <h3>Chrome extension</h3><p>Save the page you are reading to the right module in two clicks. The popup remembers where you saved last, and uses your existing sign-in rather than asking for a password.</p>
+   </article>
+  </div>
+ </div>
+</section>
+
+<section id="access" aria-labelledby="access-title">
+ <div class="wrap">
+  <div class="a11y reveal">
+   <div class="head" style="margin-bottom:0"><h2 id="access-title">Comfortable to read, by design</h2><p>Dark navy instead of black and warm off-white text instead of pure white reduce glare, which many readers with dyslexia find easier. The letterforms use Atkinson Hyperlegible where it is available.</p></div>
+   <div class="states" aria-label="Readiness states, each with an icon and a label">
+    <span class="chip u">&#9675; Untested</span><span class="chip w">! Weak</span><span class="chip d">&#9680; Developing</span><span class="chip s">&#10003; Strong</span><span class="chip c">&#9733; Cleared</span>
+   </div>
+   <ul>
+    <li><strong>Never colour alone</strong><span>Every state has an icon and a word, so nothing depends on telling colours apart.</span></li>
+    <li><strong>Readable font mode</strong><span>Larger text with wider letter, word and line spacing.</span></li>
+    <li><strong>High contrast</strong><span>Brighter text and borders for low vision or bright rooms.</span></li>
+    <li><strong>Reduce motion</strong><span>Turns every animation off. Your system setting is respected too.</span></li>
+    <li><strong>Keyboard outline</strong><span>The whole map as a tree you can move through with arrow keys.</span></li>
+    <li><strong>Read aloud</strong><span>Questions and concept cards can be read out by your browser.</span></li>
+   </ul>
+  </div>
+ </div>
+</section>
+
+<section id="guide" aria-labelledby="guide-title">
+ <div class="wrap">
+  <div class="head reveal"><h2 id="guide-title">How to use StudyNova</h2><p>A short guide to every part of the app. Open any step.</p></div>
+  <div class="guide">
+   <details open><summary><span class="num">1</span>Sign in and set up your course</summary><div class="body"><ol>
+    <li>Choose <strong>Sign in</strong> at the top right and enter your team's username and password.</li>
+    <li>In the sidebar, select <strong>+</strong> next to Courses and create a course (for example, Neural Networks).</li>
+    <li>Add an exam with its date, then a module inside it (for example, Backpropagation). The exam date drives your revision plan.</li></ol></div></details>
+   <details><summary><span class="num">2</span>Add your material</summary><div class="body"><ul>
+    <li><strong>Upload</strong> a PDF or PowerPoint with <strong>Add material</strong>. Tag it as lecture, notes, past paper or model paper. Past papers decide which concepts weigh most.</li>
+    <li><strong>Paste a link</strong> to a web page, or a public <strong>YouTube</strong> video. Video timestamps are approximate.</li>
+    <li><strong>Use the Chrome extension</strong> on any page: pick the module and save. Sign in on the website first, and the extension uses that session.</li>
+    <li>Scanned PDFs without selectable text cannot be read, and you are told so straight away.</li></ul></div></details>
+   <details><summary><span class="num">3</span>Build and explore the concept web</summary><div class="body"><ol>
+    <li>In the Materials panel, select <strong>Build concept web</strong>. It reads your sources and finds concepts and their links.</li>
+    <li>On the <strong>Study map</strong>, switch between <strong>Concept web</strong>, <strong>Material map</strong> and the keyboard <strong>Outline</strong>.</li>
+    <li>Select a concept for its definition and source. Select a link label to read the quote from each side.</li>
+    <li>Use the zoom buttons at the bottom right, or scroll the canvas.</li></ol></div></details>
+   <details><summary><span class="num">4</span>Practise with a quiz or a boss battle</summary><div class="body"><ol>
+    <li>Choose <strong>Practice quiz</strong>, then <strong>Start quiz</strong>. Weakest concepts come first.</li>
+    <li>Pick an answer. You see right away whether it was correct, plus the citation chip that opens the source page.</li>
+    <li>For a game, choose <strong>Boss battle</strong>: three hearts, XP for each correct answer, and missed concepts come back until you win.</li></ol></div></details>
+   <details><summary><span class="num">5</span>Find your learning gap</summary><div class="body"><ol>
+    <li>After a wrong answer, select <strong>Show learning gap</strong>.</li>
+    <li>The map lights the path from the question's concept back to the likely gap, with the quote that explains it.</li>
+    <li>Select <strong>See revision path</strong> for the order to review: the gap first, then a few easy questions on it, then the concepts in between, then a retry.</li></ol></div></details>
+   <details><summary><span class="num">6</span>Plan your revision</summary><div class="body"><ol>
+    <li>Open <strong>Revision plan</strong> and choose how many minutes a day you can study.</li>
+    <li>Concepts are ordered by exam weight times how far you are from ready. Select one to open it.</li>
+    <li>The plan updates as you practise.</li></ol></div></details>
+   <details><summary><span class="num">7</span>Fix lecture captions</summary><div class="body"><ol>
+    <li>Open <strong>Lecture captions</strong> and upload a lecture recording with its slides.</li>
+    <li>Highlighted words are likely mishearings of terms from your slides. Select the suggestion to fix it, or edit the words yourself.</li>
+    <li>Select a concept to jump the recording to where it is explained.</li></ol></div></details>
+   <details><summary><span class="num">8</span>Ask your materials</summary><div class="body"><ol>
+    <li>Select <strong>Ask materials</strong> in the module header and type a question.</li>
+    <li>The answer cites the pages it used. If your material does not cover the question, you get "not in your materials".</li></ol></div></details>
+   <details><summary><span class="num">9</span>Make it comfortable to read</summary><div class="body"><p>Open <strong>Accessibility</strong> at the bottom of the sidebar to turn on the readable font, high contrast or reduce motion. Everything works by keyboard: <kbd>Tab</kbd> to move, <kbd>Enter</kbd> to open, arrow keys in the outline, and <kbd>Esc</kbd> to close a dialog.</p></div></details>
+  </div>
+ </div>
+</section>
+</main>
+
+<footer id="team">
+ <div class="wrap">
+  <div class="foot">
+   <div><h3>&#10022; StudyNova</h3><p>Built in 36 hours at <strong>HackUMass XIV</strong>, University of Massachusetts Amherst, November 2026.</p><p><a href="https://github.com/Priyanka-Purushotham5/studyweave">Source code on GitHub</a></p></div>
+   <ul class="team" aria-label="Team">{{TEAM}}</ul>
+  </div>
+  <div class="legal"><span>&copy; 2026 the StudyNova team. A HackUMass XIV project.</span><span>Answers come only from the material you add, and every quote is checked against its page.</span></div>
+ </div>
+</footer>
+
+<div id="signin" class="signin {{OPEN}}" role="dialog" aria-modal="true" aria-labelledby="signin-title">
+ <div class="panel">
+  <a class="close" href="#top" aria-label="Close sign in">&times;</a>
+  <h2 id="signin-title">Sign in</h2>
+  <p>Use your team's StudyNova username and password.</p>
+  {{NOTICE}}
+  <form method="post" action="/auth/login">
+   <label>Username<input name="username" autocomplete="username" required maxlength="64"></label>
+   <label>Password<input type="password" name="password" autocomplete="current-password" required maxlength="256"></label>
+   <button class="btn gold" type="submit">Sign in</button>
+  </form>
+  <small>StudyNova uses one shared login per team. Ask a teammate if you need it.</small>
+ </div>
+</div>
+</body>
+</html>

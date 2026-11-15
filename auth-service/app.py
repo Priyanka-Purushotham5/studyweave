@@ -7,6 +7,8 @@ import time
 from pathlib import Path
 from urllib.parse import parse_qs
 
+import html
+
 import bcrypt
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -15,6 +17,15 @@ COOKIE = '__Host-studynova'
 ORIGIN = os.environ.get('AUTH_ORIGIN', 'https://studynova.ink').rstrip('/')
 CREDENTIAL_FILE = os.environ.get('AUTH_CREDENTIAL_FILE', '/run/secrets/team-auth')
 SESSION_SECONDS = 8 * 60 * 60
+
+# Landing page content. Emails are optional: a member without one shows name and role only.
+DEMO_URL = os.environ.get('STUDYNOVA_DEMO_URL', '#how')
+TEAM = [
+    {'name': 'Priyanka Purushotham', 'role': 'AI service', 'email': ''},
+    {'name': 'Danush', 'role': 'API, data and deployment', 'email': ''},
+    {'name': 'Rohith', 'role': 'Web app and Chrome extension', 'email': ''},
+]
+LANDING = Path(__file__).with_name('landing.html').read_text(encoding='utf-8')
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 sessions = {}
 attempts = {}
@@ -41,9 +52,24 @@ def credentials():
     return parts[0], parts[1]
 
 
+def team_html():
+    items = []
+    for member in TEAM:
+        email = html.escape(member.get('email', ''), quote=True)
+        link = f'<a href="mailto:{email}">{email}</a>' if email else ''
+        items.append(f'<li><strong>{html.escape(member["name"])}</strong><span>{html.escape(member["role"])}</span>{link}</li>')
+    return ''.join(items)
+
+
 def login_html(error=''):
-    notice = '<p role="alert">Incorrect username or password.</p>' if error else ''
-    return '''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sign in - StudyNova</title><style>:root{color-scheme:dark}body{font:16px/1.6 "Atkinson Hyperlegible Next","Atkinson Hyperlegible",Verdana,system-ui,sans-serif;letter-spacing:.01em;color:#ebe5d3;margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(1px 1px at 12% 18%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 78% 22%,#fff7d6 50%,transparent 51%),radial-gradient(1.5px 1.5px at 64% 74%,#fff 50%,transparent 51%),radial-gradient(1px 1px at 28% 82%,#dfe9ff 50%,transparent 51%),radial-gradient(1px 1px at 90% 58%,#fff 50%,transparent 51%),radial-gradient(900px 500px at 85% -10%,#2a3c7a66,transparent 60%),linear-gradient(180deg,#0a1126,#0e1730 55%,#101a38)}.card{background:#16213fe6;border:1px solid #ffffff1a;padding:2.4rem;border-radius:20px;box-shadow:0 30px 80px #03081899,0 0 0 1px #f3c9691a;width:min(380px,84vw)}h1{margin:0 0 .2rem;font-size:1.9rem;color:#fbf6e6;display:flex;align-items:center;gap:.5rem}h1::before{content:"\2726";color:#f3c969;text-shadow:0 0 12px #f3c969}p{margin:.2rem 0;color:#aab3cc}label{display:block;margin-top:1rem;font-weight:700}input,button{box-sizing:border-box;width:100%;padding:.8rem .9rem;margin-top:.4rem;border-radius:10px;font:inherit}input{background:#0b1329;color:#ebe5d3;border:1px solid #3a4b7c}input:focus{outline:2px solid #f3c969;outline-offset:2px;border-color:#f3c969}button{background:#f3c969;color:#1a1405;border:0;font-weight:700;cursor:pointer;margin-top:1.6rem}button:hover{background:#ffd885;box-shadow:0 0 22px #f3c96955}button:focus-visible{outline:2px solid #fff;outline-offset:3px}p[role=alert]{color:#ffc4be;background:#f29a921f;border:1px solid #f29a9255;border-radius:10px;padding:.5rem .7rem}</style></head><body><main class="card"><h1>StudyNova</h1><p>Sign in to your study workspace.</p>''' + notice + '''<form method="post" action="/auth/login"><label>Username<input name="username" autocomplete="username" required maxlength="64"></label><label>Password<input type="password" name="password" autocomplete="current-password" required maxlength="256"></label><button type="submit">Sign in</button></form></main></body></html>'''
+    """Public landing page with the sign-in dialog; the dialog opens on its own after a failed attempt."""
+    notice = '<p class="alert" role="alert">Incorrect username or password.</p>' if error else ''
+    values = {'{{NOTICE}}': notice, '{{OPEN}}': 'open' if error else '', '{{TEAM}}': team_html(),
+              '{{DEMO_URL}}': html.escape(DEMO_URL, quote=True)}
+    out = LANDING
+    for key, value in values.items():
+        out = out.replace(key, value)
+    return out
 
 
 def page(content, status=200):
