@@ -23,6 +23,7 @@ running_dir=$(docker inspect deploy-auth-service-1 --format '{{index .Config.Lab
 [[ $running_dir == *"${old_sha:0:7}"* ]] || { echo 'Running release and commit marker disagree; operator review required' >&2; exit 1; }
 export CADDY_AUTH_GID=$(getent group caddy | cut -d: -f3)
 export FAKE_GEMINI=1
+export COMPOSE_PARALLEL_LIMIT=1
 compose() { docker compose --env-file "$1/.env" -p deploy -f "$1/docker-compose.yml" -f "$1/docker-compose.single-site.yml" -f "$1/docker-compose.session-auth.yml" "${@:2}"; }
 smoke() {
   caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1
