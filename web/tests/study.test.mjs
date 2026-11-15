@@ -88,7 +88,10 @@ test("extension worker loads settings on each message and persists successful ca
   });
   globalThis.chrome = {
     runtime: { id: "addon", onMessage: { addListener(callback) { listener = callback; } } },
-    storage: { local: { get: async () => ({ server }), set: async value => writes.push(value) } },
+    storage: {
+      local: { get: async () => ({ server }), set: async value => writes.push(value) },
+      session: { get: async () => ({}) },
+    },
     tabs: { get: async () => ({ url: "https://example.com/notes", title: "Notes" }) },
     scripting: { executeScript: async () => [{ result: { url: "https://example.com/notes", title: "Notes", text: "Backpropagation." } }] },
   };
@@ -102,4 +105,53 @@ test("extension worker loads settings on each message and persists successful ca
   assert.deepEqual(requests.map(request => request.url), ["https://first.example/api/tree", "https://second.example/api/resources", "https://second.example/api/resources"]);
   assert.deepEqual(requests[2].body, { moduleId: "m_backprop", type: "web", url: "https://example.com/notes", title: "Notes", text: "Backpropagation." });
   assert.deepEqual(writes, [{ lastSelection }]);
+});
+
+test("extension signs in to the selected HTTPS API and keeps credentials in the browser session", async t => {
+  let listener;
+  const origin = "https://study.example";
+  const authorization = "Basic " + Buffer.from("demo:tést:password").toString("base64");
+  const local = { server: origin };
+  const session = {};
+  const requests = [];
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    requests.push({ url: url.href, ...options });
+    if (url.origin === origin && options.headers.Authorization !== authorization) {
+      return new Response(null, { status: 401 });
+    }
+    return Response.json(url.pathname === "/api/tree" ? tree : { ok: true });
+  });
+  const storage = data => ({
+    get: async key => ({ [key]: data[key] }),
+    set: async value => Object.assign(data, value),
+    remove: async key => { delete data[key]; },
+  });
+  globalThis.chrome = {
+    runtime: { id: "addon", onMessage: { addListener(callback) { listener = callback; } } },
+    storage: { local: storage(local), session: storage(session) },
+    tabs: { get: async () => ({ url: "https://example.com/notes", title: "Notes" }) },
+    scripting: { executeScript: async () => [] },
+  };
+  t.after(() => { delete globalThis.chrome; });
+  await import("../../extension/worker.js?auth");
+  const call = message => new Promise(resolve => listener(message, { id: "addon" }, resolve));
+  assert.equal((await call({ action: "tree" })).status, 401);
+  assert.equal((await call({ action: "connect", server: origin, username: "demo", password: "wrong" })).status, 401);
+  assert.deepEqual(session, {});
+  assert.match((await call({ action: "connect", server: "http://localhost:3000", username: "demo", password: "secret" })).error, /HTTPS/);
+  assert.equal(requests.length, 2);
+
+  assert.deepEqual((await call({ action: "connect", server: origin, username: "demo", password: "tést:password" })).result, tree);
+  assert.deepEqual(local, { server: origin });
+  assert.deepEqual(session.login, { origin, authorization });
+  assert.deepEqual((await call({ action: "tree" })).result, tree);
+  assert.deepEqual((await call({ action: "save", tabId: 1, moduleId: "m_backprop" })).result, { ok: true });
+  assert.deepEqual(requests.slice(2).map(request => [request.headers.Authorization, request.redirect]), [
+    [authorization, "error"], [authorization, "error"], [authorization, "error"],
+  ]);
+  assert.equal(requests.at(-1).headers["Content-Type"], "application/json");
+  local.server = "https://different.example";
+  await call({ action: "tree" });
+  assert.equal(requests.at(-1).headers.Authorization, undefined);
+  assert.equal(requests.at(-1).credentials, "include");
 });
