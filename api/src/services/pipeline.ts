@@ -54,6 +54,11 @@ export async function build(
       readiness: null,
       examWeight: 1,
     }));
+  if (!cs.length)
+    throw new ApiError(
+      "bad_request",
+      "No verifiable concepts were generated. Check your materials and AI configuration before trying again.",
+    );
   const vectors = await ai.call("/v1/embed", {
     texts: cs.map((c) => c.definition),
   });

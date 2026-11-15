@@ -55,6 +55,40 @@ describe.skipIf(!url)(
       expect(sharedValidator("Graph")(graph.body)).toBe(true);
       expect(graph.body.nodes).toHaveLength(4);
     });
+    it("reports empty fake-A extraction for a new resource instead of claiming success", async () => {
+      await connection.store.put("modules", {
+        id: "m_new_material",
+        examId: "e_midterm",
+        name: "New material",
+      });
+      await connection.store.put("resources", {
+        id: "r_new_material",
+        moduleId: "m_new_material",
+        type: "web",
+        title: "New material",
+        extractionStatus: "done",
+        pages: [
+          {
+            resourceId: "r_new_material",
+            n: 1,
+            text: "A new resource with unrelated study material.",
+          },
+        ],
+      });
+      const before = await connection.store.all("concepts");
+      const response = await request(ctx.app).post(
+        "/api/modules/m_new_material/build",
+      );
+      await ctx.jobs.drain();
+      expect(
+        await connection.store.get("jobs", response.body.jobId),
+      ).toMatchObject({
+        status: "failed",
+        error:
+          "No verifiable concepts were generated. Check your materials and AI configuration before trying again.",
+      });
+      expect(await connection.store.all("concepts")).toEqual(before);
+    });
     it("fresh build through actual A reconstructs canonical topology and provides two basic questions", async () => {
       const db = await connect(mongo.getUri(), "real_a_fresh_build");
       try {
