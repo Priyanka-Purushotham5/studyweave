@@ -53,7 +53,8 @@ def test_bad_json_then_good_json_succeeds_on_retry():
     assert real(lambda req: next(answers)).generate_json("glossary", {}) == {"terms": []}
 
 
-def test_missing_key_is_internal_error():
+def test_missing_key_is_internal_error(monkeypatch):
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     with pytest.raises(ApiError) as e:
         real(lambda req: ok_json({}), key="").generate_json("glossary", {})
     assert e.value.code == "internal"

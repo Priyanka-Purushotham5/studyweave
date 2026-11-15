@@ -4,36 +4,48 @@ import { basename, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { after, before, test } from "node:test";
 import { chromium } from "playwright";
+import { createServer } from "node:http";
+import AxeBuilder from "@axe-core/playwright";
 
 const dist = fileURLToPath(new URL("../dist/", import.meta.url));
 const apiOrigin = process.env.TEST_API_ORIGIN;
-const origin = "https://studyweave.test";
+let origin;
+let server;
 const chromeArgs = process.env.PLAYWRIGHT_SINGLE_PROCESS ? ["--single-process", "--no-zygote", "--disable-gpu"] : [];
 const contentTypes = { ".js": "text/javascript", ".css": "text/css", ".html": "text/html", ".pdf": "application/pdf", ".mp3": "audio/mpeg" };
 let browser;
 
-before(async () => { if (!chromeArgs.length) browser = await chromium.launch(); });
-after(async () => { await browser?.close(); });
+before(async () => {
+  server = createServer(async (req, res) => {
+    try {
+      const path = new URL(req.url, "http://localhost").pathname;
+      const file = path === "/" ? join(dist, "index.html") : path.startsWith("/assets/") ? join(dist, "assets", basename(path)) : join(dist, basename(path));
+      res.writeHead(200, { "Content-Type": contentTypes[extname(file)] ?? "application/octet-stream" });
+      res.end(await readFile(file));
+    } catch { res.writeHead(404); res.end(); }
+  });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  origin = `http://127.0.0.1:${server.address().port}`;
+  if (!chromeArgs.length) browser = await chromium.launch();
+});
+after(async () => { await browser?.close(); await new Promise(resolve => server.close(resolve)); });
 
 async function open(t, viewport = { width: 1440, height: 920 }) {
   const instance = chromeArgs.length ? await chromium.launch({ args: chromeArgs }) : browser;
-  const page = await instance.newPage({ viewport });
-  t.after(() => chromeArgs.length ? instance.close() : page.close());
+  const context = await instance.newContext({ viewport });
+  const page = await context.newPage();
+  t.after(async () => { await context.close(); if (chromeArgs.length) await instance.close(); });
   const errors = [];
   page.on("pageerror", error => errors.push(error.message));
   t.after(() => assert.deepEqual(errors, []));
   await page.route("https://fonts.googleapis.com/**", route => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
-  await page.route(`${origin}/**`, async route => {
-    const path = new URL(route.request().url()).pathname;
-    if (path.startsWith("/api/")) {
-      if (!apiOrigin) return route.fulfill({ status: 503, json: { error: { code: "ai_unavailable" } } });
-      const response = await route.fetch({ url: new URL(route.request().url().slice(origin.length), apiOrigin).href });
-      return route.fulfill({ response });
-    }
-    const file = path === "/" ? join(dist, "index.html") : path.startsWith("/assets/") ? join(dist, "assets", basename(path)) : join(dist, basename(path));
-    await route.fulfill({ body: await readFile(file), contentType: contentTypes[extname(file)] });
+  if (apiOrigin) await page.route(`${origin}/api/**`, async route => {
+    const response = await route.fetch({ url: new URL(route.request().url().slice(origin.length), apiOrigin).href });
+    return route.fulfill({ response });
   });
   await page.goto(origin);
+  assert.equal(await page.title(), "StudyNova");
+  await page.getByRole("link", { name: "StudyNova", exact: true }).waitFor();
   await page.getByRole("heading", { name: "Backpropagation", exact: true }).waitFor();
   await page.locator('[data-concept-id="c_chain_rule"]').waitFor();
   return page;
@@ -71,16 +83,22 @@ test("missed quiz answer opens the Chain rule trace, cited evidence and revision
     const question = await page.locator(".question").innerText();
     if (question.includes("Which rule does backpropagation apply")) break;
     const options = page.locator(".options button");
-    if (await options.count()) await options.first().click();
+    if (await options.count()) await options.nth(question.includes("chain rule let us compute") ? 1 : 0).click();
     else {
       await page.getByRole("textbox", { name: "Your answer" }).fill("My answer");
       await page.getByRole("button", { name: "Reveal answer" }).click();
       await page.getByRole("button", { name: "I got it" }).click();
     }
     await page.getByRole("button", { name: "Next question" }).click();
+    await page.waitForFunction(previous => document.querySelector(".question")?.textContent !== previous, question);
   }
+  const attemptResponse = page.waitForResponse(response => response.url().includes("/api/attempts") && response.request().method() === "POST");
   await page.getByRole("button", { name: "A Product rule" }).click();
-  await page.getByRole("button", { name: "Show learning gap" }).click();
+  const attempt = await attemptResponse;
+  assert.equal(attempt.status(), 200, `attempt: ${await attempt.text()}`);
+  await page.getByRole("button", { name: "Show learning gap" }).click().catch(async error => {
+    throw new Error(`${error.message}\nVisible error: ${await page.getByRole("alert").allInnerTexts()}`);
+  });
   await page.getByRole("heading", { name: "Likely gap: Chain rule" }).waitFor();
   assert.equal(await page.locator(".trace-node").count(), 2);
   await page.locator(".gap-panel").getByRole("button", { name: /Page 2/ }).click();
@@ -120,6 +138,8 @@ test("demo capture, caption correction, refusal and accessibility controls work"
   assert.equal(await page.locator("html").getAttribute("data-motion"), "true");
   await page.keyboard.press("Escape");
   await page.reload();
+  await page.getByRole("link", { name: "StudyNova", exact: true }).waitFor();
+  await page.waitForFunction(() => document.documentElement.dataset.readable === "true");
   assert.equal(await page.locator("html").getAttribute("data-readable"), "true");
 });
 
@@ -156,5 +176,29 @@ test("workspace fits a small viewport", async t => {
     await mobile.screenshot({ path: resolve(directory, "mobile.png"), fullPage: true });
     const desktop = await open(t);
     await desktop.screenshot({ path: resolve(directory, "desktop.png"), fullPage: true });
+  }
+});
+
+
+test("key study screens have no serious accessibility violations", { skip: !!apiOrigin }, async t => {
+  const page = await open(t);
+  for (const screen of ["Study map", "Practice quiz", "Boss battle", "Lecture captions", "Revision plan"]) {
+    await nav(page, screen).click();
+    const results = await new AxeBuilder({ page }).analyze();
+    const serious = results.violations.filter(item => ["serious", "critical"].includes(item.impact));
+    assert.deepEqual(serious.map(item => ({ id: item.id, nodes: item.nodes.map(node => node.target) })), [], screen);
+  }
+});
+
+
+test("concept flashcard exposes read-aloud when speech synthesis is available", async t => {
+  const page = await open(t);
+  await page.locator('[data-concept-id="c_chain_rule"]').click();
+  const dialog = page.getByRole("dialog", { name: "Chain rule" });
+  await dialog.waitFor();
+  if (await page.evaluate(() => "speechSynthesis" in window)) {
+    const button = dialog.getByRole("button", { name: "Read concept aloud" });
+    await button.waitFor();
+    await button.click();
   }
 });

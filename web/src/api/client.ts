@@ -11,7 +11,7 @@ const messages: Record<ErrorCode | "offline", string> = {
   rate_limited: "Too many requests. Wait a moment and try again.",
   ai_unavailable: "The study assistant is temporarily unavailable.",
   internal: "Something went wrong. Try again in a moment.",
-  offline: "StudyWeave could not reach the server. Check your connection and try again.",
+  offline: "StudyNova could not reach the server. Check your connection and try again.",
 };
 
 export class ApiError extends Error {
@@ -22,9 +22,7 @@ export class ApiError extends Error {
 
 export const apiUrl = (path: string) => `${base}/api${path}`;
 const id = encodeURIComponent;
-const mock = import.meta.env.VITE_MOCK === "1" ? import("../mocks/fixtures") : undefined;
 async function request<T>(path: string, body?: object): Promise<T> {
-  if (mock) return (await mock).respond(path, body) as T;
   const options: RequestInit = body instanceof FormData
     ? { method: "POST", body }
     : body

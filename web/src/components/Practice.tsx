@@ -75,7 +75,7 @@ export function Practice({ moduleId, concepts, resources, mode, findConceptModul
     </div></div>
     <div className="panel-body workspace-form">
       {isBattle && <div className="battle-status">
-        <span className="hearts" aria-label={`${battle.hearts} of 3 hearts`}>{[1, 2, 3].map(number => <Heart key={number} size={21} fill={number <= battle.hearts ? "currentColor" : "none"} aria-hidden="true"/>)}</span>
+        <span className="hearts" role="img" aria-label={`${battle.hearts} of 3 hearts`}>{[1, 2, 3].map(number => <Heart key={number} size={21} fill={number <= battle.hearts ? "currentColor" : "none"} aria-hidden="true"/>)}</span>
         <label className="health-bar">Boss health · {battle.remaining.length}/{concepts.length}<progress max={Math.max(1, concepts.length)} value={battle.remaining.length}/></label>
         <span className="tag"><Zap size={15}/> {battle.xp} XP</span>
       </div>}
